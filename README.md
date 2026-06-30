@@ -1,6 +1,6 @@
 # FileDrop
 
-## Goal:
+### Goal
 Send files between Mac and Windows over the same Wi-Fi.
 
 **Version 1 Features:**
