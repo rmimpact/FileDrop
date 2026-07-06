@@ -1,112 +1,132 @@
-.logo.angular:hover {
-  filter: drop-shadow(0 0 2em #e32727);
-}
-:root {
-  font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
-  font-size: 16px;
-  line-height: 24px;
-  font-weight: 400;
-
-  color: #0f0f0f;
-  background-color: #f6f6f6;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  -webkit-text-size-adjust: 100%;
+/* Makes the Angular app fill the whole desktop window */
+:host {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+  background: #f1f1f1;
+  color: #202020;
+  font-family: Arial, Helvetica, sans-serif;
 }
 
-.container {
-  margin: 0;
-  padding-top: 10vh;
+/* Stops padding/borders from breaking card sizes */
+* {
+  box-sizing: border-box;
+}
+
+/* Main app wrapper */
+.filedrop-shell {
+  height: 100vh; /* Locks the app to the window height */
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  text-align: center;
+  overflow: hidden; /* Stops the whole window from scrolling */
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: 0.75s;
-}
-
-.logo.tauri:hover {
-  filter: drop-shadow(0 0 2em #24c8db);
-}
-
-.row {
+/* Top area with Devices title and settings icon */
+.top-bar {
   display: flex;
-  justify-content: center;
+  align-items: center;
+  justify-content: space-between;
+  padding: 70px 95px 35px;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-
-a:hover {
-  color: #535bf2;
-}
-
+/* Devices title */
 h1 {
-  text-align: center;
+  margin: 0;
+  font-size: 70px;
+  font-weight: 400;
 }
 
-input,
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  color: #0f0f0f;
-  background-color: #ffffff;
-  transition: border-color 0.25s;
-  box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2);
-}
-
-button {
+/* Settings cog button */
+.settings-button {
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  font-size: 60px;
   cursor: pointer;
 }
 
-button:hover {
-  border-color: #396cd8;
-}
-button:active {
-  border-color: #396cd8;
-  background-color: #e8e8e8;
-}
-
-input,
-button {
-  outline: none;
-}
-
-#greet-input {
-  margin-right: 5px;
+/* Holds all device cards and scrolls only this middle area */
+.device-grid {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 36px;
+  padding: 20px 90px 40px;
+  align-items: flex-start;
+  align-content: flex-start;
+  flex: 1;
+  min-height: 0; /* Important: allows scrolling inside flex layouts */
+  overflow-y: auto; /* Allows vertical scrolling through devices */
+  overflow-x: hidden; /* Prevents sideways scrolling */
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    color: #f6f6f6;
-    background-color: #2f2f2f;
-  }
+/* Individual device card */
+.device-card {
+  width: clamp(215px, 16vw, 234px); /* Shrinks/grows based on window size */
+  height: clamp(205px, 16vw, 221px);
+  background: #ffffff;
+  border: 2px solid #cacaca;
+  border-radius: 38px;
+  box-shadow: 0 18px 35px rgba(0, 0, 0, 0.08);
+  padding: 28px 18px 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+}
 
-  a:hover {
-    color: #24c8db;
-  }
+/* Mac / Windows icon */
+.device-icon {
+  font-size: 63px;
+  line-height: 1;
+}
 
-  input,
-  button {
-    color: #ffffff;
-    background-color: #0f0f0f98;
-  }
-  button:active {
-    background-color: #0f0f0f69;
-  }
+/* Makes the Windows icon blue */
+.device-icon.windows {
+  color: #00adee;
+  font-weight: bold;
+}
+
+/* Device name text */
+.device-name {
+  margin: 0;
+  font-size: clamp(18px, 1.6vw, 22px);
+  text-align: center;
+  line-height: 1.15;
+  max-width: 100%;
+  word-break: normal;
+}
+
+/* Pink Send button */
+.send-button {
+  width: 100%;
+  height: 45px;
+  border: none;
+  border-radius: 999px;
+  background: #dd3c5c;
+  color: white;
+  font-size: clamp(20px, 1.6vw, 22px);
+  box-shadow: none;
+  cursor: pointer;
+}
+
+/* Bottom discoverable bar */
+
+.status-bar {
+  height: 88px;
+  flex-shrink: 0; /* Keeps the status bar fixed at the bottom */
+  border-top: 1px solid #cacaca;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  font-size: 20px;
+}
+
+/* Green online dot */
+.status-dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #01bf63;
 }

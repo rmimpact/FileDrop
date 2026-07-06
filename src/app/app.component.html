@@ -1,21 +1,30 @@
-<main class="container">
-  <h1>Welcome to Tauri + Angular!</h1>
 
-  <div class="row">
-    <a href="https://tauri.app" target="_blank">
-      <img src="/assets/tauri.svg" class="logo tauri" alt="Tauri logo" />
-    </a>
-    <a href="https://angular.io" target="_blank">
-      <img src="/assets/angular.svg" class="logo angular" alt="Angular logo" />
-    </a>
-  </div>
-  <p>Click on the logos to learn more about the frameworks</p>
+<main class="filedrop-shell">
+  <section class="top-bar">
+    <h1>Devices</h1>
+    <button class="settings-button" type="button" aria-label="Open settings">
+      ⚙
+    </button>
+  </section>
 
-  <form class="row" (submit)="greet($event, greetInput.value)">
-    <input #greetInput id="greet-input" placeholder="Enter a name..." />
-    <button type="submit">Greet</button>
-  </form>
-  <p>{{ greetingMessage }}</p>
+  <section class="device-grid" aria-label="Nearby devices">
+    @for (device of devices; track device.id) {
+      <article class="device-card">
+        <div class="device-icon" [class.windows]="device.type === 'windows'">
+          {{ device.type === 'mac' ? '' : '⊞' }}
+        </div>
 
-  <router-outlet />
+        <p class="device-name">{{ device.name }}</p>
+
+        <button class="send-button" type="button">
+          Send
+        </button>
+      </article>
+    }
+  </section>
+
+  <footer class="status-bar">
+    <span class="status-dot"></span>
+    <span>Discoverable as {{ localDeviceName }}</span>
+  </footer>
 </main>
