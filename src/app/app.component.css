@@ -1,10 +1,55 @@
+/* =======================================================
+   THEME VARIABLES
+   These colours control the whole app.
+======================================================= */
+
+/* Light theme is the default theme */
+.filedrop-shell {
+  --main-background: #f1f1f1;
+  --main-text: #202020;
+  --light-text: #393a40;
+
+  --card-background: #ffffff;
+  --card-border: #cacaca;
+
+  --button: #dd3c5c;
+
+  --status-border: #cacaca;
+  --status-dot: #01bf63;
+
+  --blue-icon: #00adee;
+
+  --settings-overlay: rgba(241, 241, 241, 0.55);
+  --settings-background: rgba(245, 245, 245, 0.72);
+  --settings-border: #cacaca;
+}
+
+/* Dark theme overrides only the colours */
+.filedrop-shell.dark-theme {
+  --main-background: #030304;
+  --main-text: #eeeef0;
+  --light-text: #b2b3bd;
+
+  --card-background: #161618;
+  --card-border: #393a40;
+
+  --button: #ba495a;
+
+  --status-border: #393a40;
+  --status-dot: #2da76d;
+
+  --blue-icon: #1e98c6;
+
+  --settings-overlay: rgba(20, 20, 20, 0.55);
+  --settings-background: rgba(38, 38, 38, 0.72);
+  --settings-border: #393a40;
+}
+
 /* Makes the Angular app fill the whole desktop window */
 :host {
   display: block;
   width: 100vw;
   height: 100vh;
-  background: #f1f1f1;
-  color: #202020;
   font-family: Arial, Helvetica, sans-serif;
 }
 
@@ -15,10 +60,12 @@
 
 /* Main app wrapper */
 .filedrop-shell {
-  height: 100vh; /* Locks the app to the window height */
+  height: 100vh;
   display: flex;
   flex-direction: column;
-  overflow: hidden; /* Stops the whole window from scrolling */
+  overflow: hidden;
+  background: var(--main-background);
+  color: var(--main-text);
 }
 
 /* Top area with Devices title and settings icon */
@@ -40,6 +87,7 @@ h1 {
 .settings-button {
   border: none;
   background: transparent;
+  color: var(--main-text);
   box-shadow: none;
   font-size: 60px;
   cursor: pointer;
@@ -55,17 +103,17 @@ h1 {
   align-items: flex-start;
   align-content: flex-start;
   flex: 1;
-  min-height: 0; /* Important: allows scrolling inside flex layouts */
-  overflow-y: auto; /* Allows vertical scrolling through devices */
-  overflow-x: hidden; /* Prevents sideways scrolling */
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 /* Individual device card */
 .device-card {
-  width: clamp(215px, 16vw, 234px); /* Shrinks/grows based on window size */
+  width: clamp(215px, 16vw, 234px);
   height: clamp(205px, 16vw, 221px);
-  background: #ffffff;
-  border: 2px solid #cacaca;
+  background: var(--card-background);
+  border: 1px solid var(--card-border);
   border-radius: 38px;
   box-shadow: 0 18px 35px rgba(0, 0, 0, 0.08);
   padding: 28px 18px 18px;
@@ -83,13 +131,14 @@ h1 {
 
 /* Makes the Windows icon blue */
 .device-icon.windows {
-  color: #00adee;
+  color: var(--blue-icon);
   font-weight: bold;
 }
 
 /* Device name text */
 .device-name {
   margin: 0;
+  color: var(--main-text);
   font-size: clamp(18px, 1.6vw, 22px);
   text-align: center;
   line-height: 1.15;
@@ -103,7 +152,7 @@ h1 {
   height: 45px;
   border: none;
   border-radius: 999px;
-  background: #dd3c5c;
+  background: var(--button);
   color: white;
   font-size: clamp(20px, 1.6vw, 22px);
   box-shadow: none;
@@ -111,15 +160,15 @@ h1 {
 }
 
 /* Bottom discoverable bar */
-
 .status-bar {
   height: 88px;
-  flex-shrink: 0; /* Keeps the status bar fixed at the bottom */
-  border-top: 1px solid #cacaca;
+  flex-shrink: 0;
+  border-top: 1px solid var(--status-border);
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 14px;
+  color: var(--main-text);
   font-size: 20px;
 }
 
@@ -128,5 +177,129 @@ h1 {
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: #01bf63;
+  background: var(--status-dot);
+}
+
+/* Full-screen transparent layer behind the settings box */
+.settings-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--settings-overlay);
+  backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+/* Main settings popup */
+.settings-modal {
+  width: 610px;
+  height: 580px;
+  border-radius: 32px;
+  border: 1px solid var(--settings-border);
+  background: var(--settings-background);
+  box-shadow: 0 35px 90px rgba(0, 0, 0, 0.18);
+  padding: 42px 48px;
+  position: relative;
+  color: var(--main-text);
+}
+
+/* Settings title and close button row */
+.settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Settings title */
+.settings-header h2 {
+  margin: 0;
+  font-size: 42px;
+  font-weight: 400;
+}
+
+/* X close button */
+.close-button {
+  border: none;
+  background: transparent;
+  color: var(--main-text);
+  box-shadow: none;
+  font-size: 54px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* Holds the settings controls */
+.settings-content {
+  width: 300px;
+  margin: 250px auto 0;
+}
+
+/* Theme label */
+.setting-label {
+  display: block;
+  color: var(--main-text);
+  font-size: 26px;
+  margin-bottom: 12px;
+}
+
+/* Auto / Light / Dark container */
+.theme-selector {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border: 1px solid var(--settings-border);
+  border-radius: 6px;
+  overflow: hidden;
+  height: 40px;
+}
+
+/* Theme buttons */
+.theme-selector button {
+  border: none;
+  background: transparent;
+  color: var(--main-text);
+  box-shadow: none;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+/* Selected theme button */
+.theme-selector button.active {
+  background: var(--button);
+  color: white;
+}
+
+/* Version text at bottom */
+.version-text {
+  position: absolute;
+  bottom: 14px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  color: var(--light-text);
+  font-size: 15px;
+}
+
+/* Auto theme: if the device is in dark mode, use dark colours */
+@media (prefers-color-scheme: dark) {
+  .filedrop-shell:not(.light-theme) {
+    --main-background: #030304;
+    --main-text: #eeeef0;
+    --light-text: #b2b3bd;
+
+    --card-background: #161618;
+    --card-border: #393a40;
+
+    --button: #ba495a;
+
+    --status-border: #393a40;
+    --status-dot: #2da76d;
+
+    --blue-icon: #1e98c6;
+
+    --settings-overlay: rgba(20, 20, 20, 0.55);
+    --settings-background: rgba(38, 38, 38, 0.72);
+    --settings-border: #393a40;
+  }
 }

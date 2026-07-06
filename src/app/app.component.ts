@@ -15,8 +15,16 @@ interface NearbyDevice {
   styleUrl: './app.component.css',
 })
 export class AppComponent {
+
+  // ===== Current device =====
   localDeviceName = "Jayden’s Macbook";
 
+  // ===== Settings =====
+  settingsOpen = false;
+
+  selectedTheme: 'auto' | 'light' | 'dark' = 'auto';
+
+  // ===== Nearby devices =====
   devices: NearbyDevice[] = [
     {
       id: 1,
@@ -39,4 +47,18 @@ export class AppComponent {
       type: 'mac',
     },
   ];
+
+  // ===== Functions =====
+
+  openSettings() {
+    this.settingsOpen = true;
+  }
+
+  closeSettings() {
+    this.settingsOpen = false;
+  }
+
+  setTheme(theme: 'auto' | 'light' | 'dark') {
+    this.selectedTheme = theme;
+  }
 }

@@ -1,8 +1,11 @@
 
-<main class="filedrop-shell">
+<main
+  class="filedrop-shell"
+  [class.dark-theme]="selectedTheme === 'dark'"
+  [class.light-theme]="selectedTheme === 'light'">
   <section class="top-bar">
     <h1>Devices</h1>
-    <button class="settings-button" type="button" aria-label="Open settings">
+    <button class="settings-button" type="button" aria-label="Open settings" (click)="openSettings()">
       ⚙
     </button>
   </section>
@@ -27,4 +30,48 @@
     <span class="status-dot"></span>
     <span>Discoverable as {{ localDeviceName }}</span>
   </footer>
+  @if (settingsOpen) {
+    <section class="settings-overlay">
+      <div class="settings-modal">
+        <header class="settings-header">
+          <h2>Settings</h2>
+  
+          <button class="close-button" type="button" aria-label="Close settings" (click)="closeSettings()">
+            ×
+          </button>
+        </header>
+  
+        <div class="settings-content">
+          <label class="setting-label">Theme</label>
+  
+          <div class="theme-selector">
+            <button
+              type="button"
+              [class.active]="selectedTheme === 'auto'"
+              (click)="setTheme('auto')">
+              Auto
+            </button>
+  
+            <button
+              type="button"
+              [class.active]="selectedTheme === 'light'"
+              (click)="setTheme('light')">
+              Light
+            </button>
+  
+            <button
+              type="button"
+              [class.active]="selectedTheme === 'dark'"
+              (click)="setTheme('dark')">
+              Dark
+            </button>
+          </div>
+        </div>
+  
+        <p class="version-text">ⓘ Version 1.0</p>
+      </div>
+    </section>
+  }
 </main>
+
+
