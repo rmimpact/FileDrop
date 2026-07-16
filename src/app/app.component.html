@@ -19,7 +19,7 @@
 
         <p class="device-name">{{ device.name }}</p>
 
-        <button class="send-button" type="button">
+        <button class="send-button" type="button" (click)="openFileSelection(device)">
           Send
         </button>
       </article>
@@ -72,6 +72,67 @@
       </div>
     </section>
   }
+
+  @if (fileSelectionOpen && selectedDevice) {
+    <section class="settings-overlay">
+      <div class="file-selection-modal">
+        <header class="file-selection-header">
+          <div class="share-title">
+            <div class="upload-icon" aria-hidden="true">↑</div>
+
+            <div>
+              <p>Select files to share with</p>
+              <h2>{{ selectedDevice.name }}</h2>
+            </div>
+          </div>
+
+          <button class="close-button" type="button" aria-label="Close file selection" (click)="closeFileSelection()">
+            ×
+          </button>
+        </header>
+
+        <label
+          class="drop-zone"
+          for="file-picker"
+          (drop)="onDrop($event)"
+          (dragover)="onDragOver($event)">
+          <span>Drag/Drop files</span>
+          <span>Select files</span>
+        </label>
+
+        <input
+          id="file-picker"
+          class="file-input"
+          type="file"
+          multiple
+          (change)="addFiles($any($event.target).files)">
+
+        <section class="selected-files" aria-label="Selected files">
+          <h3>Selected files</h3>
+
+          <ul>
+            @for (fileName of selectedFiles; track $index; let fileIndex = $index) {
+              <li>
+                <button class="remove-file-button" type="button" [attr.aria-label]="'Remove ' + fileName" (click)="removeFile(fileIndex)">
+                  −
+                </button>
+                <span>{{ fileName }}</span>
+              </li>
+            }
+          </ul>
+        </section>
+
+        <footer class="file-selection-footer">
+          <div class="connection-status">
+            <span class="status-dot"></span>
+            <span>Connection Stable</span>
+          </div>
+
+          <button class="continue-button" type="button">
+            Continue
+          </button>
+        </footer>
+      </div>
+    </section>
+  }
 </main>
-
-
