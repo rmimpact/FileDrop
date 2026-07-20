@@ -1,4 +1,3 @@
-
 <main
   class="filedrop-shell"
   [class.dark-theme]="selectedTheme === 'dark'"
@@ -13,8 +12,8 @@
   <section class="device-grid" aria-label="Nearby devices">
     @for (device of devices; track device.id) {
       <article class="device-card">
-        <div class="device-icon" [class.windows]="device.type === 'windows'">
-          {{ device.type === 'mac' ? '' : '⊞' }}
+        <div class="device-icon" [class.windows]="device.platform === 'windows'">
+          {{ device.platform === 'mac' ? '' : '⊞' }}
         </div>
 
         <p class="device-name">{{ device.name }}</p>
@@ -23,6 +22,8 @@
           Send
         </button>
       </article>
+    } @empty {
+      <p class="empty-devices">Looking for nearby devices…</p>
     }
   </section>
 
@@ -30,44 +31,34 @@
     <span class="status-dot"></span>
     <span>Discoverable as {{ localDeviceName }}</span>
   </footer>
+
   @if (settingsOpen) {
     <section class="settings-overlay">
       <div class="settings-modal">
         <header class="settings-header">
           <h2>Settings</h2>
-  
+
           <button class="close-button" type="button" aria-label="Close settings" (click)="closeSettings()">
             ×
           </button>
         </header>
-  
+
         <div class="settings-content">
           <label class="setting-label">Theme</label>
-  
+
           <div class="theme-selector">
-            <button
-              type="button"
-              [class.active]="selectedTheme === 'auto'"
-              (click)="setTheme('auto')">
+            <button type="button" [class.active]="selectedTheme === 'auto'" (click)="setTheme('auto')">
               Auto
             </button>
-  
-            <button
-              type="button"
-              [class.active]="selectedTheme === 'light'"
-              (click)="setTheme('light')">
+            <button type="button" [class.active]="selectedTheme === 'light'" (click)="setTheme('light')">
               Light
             </button>
-  
-            <button
-              type="button"
-              [class.active]="selectedTheme === 'dark'"
-              (click)="setTheme('dark')">
+            <button type="button" [class.active]="selectedTheme === 'dark'" (click)="setTheme('dark')">
               Dark
             </button>
           </div>
         </div>
-  
+
         <p class="version-text">ⓘ Version 1.0</p>
       </div>
     </section>
@@ -91,32 +82,21 @@
           </button>
         </header>
 
-        <label
-          class="drop-zone"
-          for="file-picker"
-          (drop)="onDrop($event)"
-          (dragover)="onDragOver($event)">
+        <button class="drop-zone" type="button" (click)="pickFiles()">
           <span>Drag/Drop files</span>
           <span>Select files</span>
-        </label>
-
-        <input
-          id="file-picker"
-          class="file-input"
-          type="file"
-          multiple
-          (change)="addFiles($any($event.target).files)">
+        </button>
 
         <section class="selected-files" aria-label="Selected files">
           <h3>Selected files</h3>
 
           <ul>
-            @for (fileName of selectedFiles; track $index; let fileIndex = $index) {
+            @for (file of selectedFiles; track file.path; let fileIndex = $index) {
               <li>
-                <button class="remove-file-button" type="button" [attr.aria-label]="'Remove ' + fileName" (click)="removeFile(fileIndex)">
+                <button class="remove-file-button" type="button" [attr.aria-label]="'Remove ' + file.name" (click)="removeFile(fileIndex)">
                   −
                 </button>
-                <span>{{ fileName }}</span>
+                <span>{{ file.name }}</span>
               </li>
             }
           </ul>
@@ -128,11 +108,153 @@
             <span>Connection Stable</span>
           </div>
 
-          <button class="continue-button" type="button">
+          <button
+            class="continue-button"
+            type="button"
+            [disabled]="selectedFiles.length === 0"
+            (click)="startSending()">
             Continue
           </button>
         </footer>
       </div>
     </section>
   }
+
+  @if (sendingOpen && selectedDevice) {
+    <section class="settings-overlay">
+      <div class="file-selection-modal sending-modal">
+        <header class="file-selection-header">
+          <div class="share-title">
+            <div class="upload-icon transfer-direction-icon" aria-hidden="true">
+              <svg viewBox="0 0 64 64" role="presentation">
+                <path d="M32 43V13M19 26l13-13 13 13M18 50h28" />
+              </svg>
+            </div>
+
+            <div>
+              <p>Sending to</p>
+              <h2>{{ selectedDevice.name }}</h2>
+            </div>
+          </div>
+
+          <button class="close-button" type="button" aria-label="Cancel sending" (click)="cancelSending()">
+            ×
+          </button>
+        </header>
+
+        <ng-container *ngTemplateOutlet="transferFileList"></ng-container>
+        <ng-container *ngTemplateOutlet="transferFooter"></ng-container>
+      </div>
+    </section>
+  }
+
+  @if (receivingConfirmationOpen && incomingOffer) {
+    <section class="settings-overlay">
+      <div class="file-selection-modal receiving-confirmation-modal">
+        <header class="file-selection-header receiving-confirmation-header">
+          <div class="share-title">
+            <div class="parachute-icon" aria-hidden="true">
+              <svg viewBox="0 0 72 82" role="presentation">
+                <path d="M7 27C11 9 25 3 36 3s25 6 29 24L49 43 36 64 23 43 7 27Z" />
+                <path d="M7 27h58M23 43 17 27M49 43l6-16M36 64V3M29 75h14v-9H29v9Z" />
+              </svg>
+            </div>
+
+            <div>
+              <p>Confirm File Drop from</p>
+              <h2>{{ incomingOffer.sender.name }}</h2>
+            </div>
+          </div>
+        </header>
+
+        <section class="incoming-files" aria-label="Incoming files">
+          <h3>Files</h3>
+          <ul>
+            @for (file of incomingOffer.files; track $index) {
+              <li><span class="file-check">✓</span>{{ file.name }}</li>
+            }
+          </ul>
+        </section>
+
+        <footer class="confirmation-actions">
+          <button class="deny-button" type="button" (click)="respondToIncomingOffer(false)">Deny</button>
+          <button class="confirm-button" type="button" (click)="respondToIncomingOffer(true)">Confirm</button>
+        </footer>
+      </div>
+    </section>
+  }
+
+  @if (receivingOpen && incomingOffer) {
+    <section class="settings-overlay">
+      <div class="file-selection-modal sending-modal">
+        <header class="file-selection-header">
+          <div class="share-title">
+            <div class="upload-icon transfer-direction-icon" aria-hidden="true">
+              <svg viewBox="0 0 64 64" role="presentation">
+                <path d="M32 13v30M19 30l13 13 13-13M18 50h28" />
+              </svg>
+            </div>
+
+            <div>
+              <p>Receiving from</p>
+              <h2>{{ incomingOffer.sender.name }}</h2>
+            </div>
+          </div>
+
+          <button class="close-button" type="button" aria-label="Cancel receiving" (click)="cancelReceiving()">
+            ×
+          </button>
+        </header>
+
+        <ng-container *ngTemplateOutlet="transferFileList"></ng-container>
+        <ng-container *ngTemplateOutlet="transferFooter"></ng-container>
+      </div>
+    </section>
+  }
+
+  <ng-template #transferFileList>
+    <section class="transfer-files" aria-label="File transfer status">
+      @for (file of transferFiles(); track $index; let fileIndex = $index) {
+        <div class="transfer-file">
+          @if (isFileComplete(fileIndex)) {
+            <span class="transfer-complete" aria-label="Complete">✓</span>
+          } @else if (isFileActive(fileIndex)) {
+            <span class="transfer-spinner" aria-label="Transferring"></span>
+          } @else {
+            <span class="transfer-waiting" aria-label="Waiting"></span>
+          }
+          <span>{{ file.name }}</span>
+        </div>
+      }
+
+      @if (transferError) {
+        <p class="transfer-error">{{ transferError }}</p>
+      }
+    </section>
+  </ng-template>
+
+  <ng-template #transferFooter>
+    <footer class="sending-footer">
+      <div
+        class="transfer-progress"
+        role="progressbar"
+        aria-label="Overall transfer progress"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        [attr.aria-valuenow]="transferProgress">
+        <span [style.width.%]="transferProgress"></span>
+      </div>
+
+      <div class="file-selection-footer sending-footer-row">
+        <div class="connection-status">
+          <span class="status-dot"></span>
+          <span>{{ transferFinished ? 'Transfer Complete' : 'Connection Stable' }}</span>
+        </div>
+
+        <button class="continue-button" type="button" (click)="closeActiveTransfer()">
+          {{ transferFinished ? 'Done' : 'Cancel' }}
+        </button>
+      </div>
+    </footer>
+  </ng-template>
 </main>
