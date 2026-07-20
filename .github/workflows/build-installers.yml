@@ -57,9 +57,16 @@ jobs:
         with:
           tagName: filedrop-v__VERSION__
           releaseName: FileDrop v__VERSION__
-          releaseBody: Download the installer for your operating system. On macOS, open the DMG and drag FileDrop to Applications. On Windows, run the setup EXE; it checks for WebView2 and installs it if needed.
-          releaseDraft: true
+          releaseBody: |
+            Download the installer for your operating system:
+
+            - macOS: open the DMG and drag FileDrop to Applications.
+            - Windows: run the setup EXE. It checks for WebView2 and installs it if needed.
+
+            These early builds are not yet commercially code-signed, so macOS Gatekeeper or Windows SmartScreen may ask you to confirm that you want to open FileDrop.
+          releaseDraft: ${{ github.event_name == 'workflow_dispatch' }}
           prerelease: false
+          generateReleaseNotes: true
           uploadUpdaterJson: false
           releaseAssetNamePattern: FileDrop_[version]_[platform]_[arch][setup].[ext]
           args: ${{ matrix.args }}

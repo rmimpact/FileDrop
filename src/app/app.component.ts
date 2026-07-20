@@ -1,6 +1,7 @@
 import { Component, NgZone, OnDestroy, OnInit } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { invoke } from '@tauri-apps/api/core';
+import { getVersion } from '@tauri-apps/api/app';
 import { listen, UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWebview } from '@tauri-apps/api/webview';
 import { open } from '@tauri-apps/plugin-dialog';
@@ -92,6 +93,7 @@ interface TransferFailed {
 export class AppComponent implements OnInit, OnDestroy {
   localDeviceName = 'This Device';
   localPlatform: DeviceType = 'other';
+  appVersion = '1.0.0';
   downloadDirectory = '';
   settingsOpen = false;
   selectedTheme: 'auto' | 'light' | 'dark' = 'auto';
@@ -135,9 +137,10 @@ export class AppComponent implements OnInit, OnDestroy {
     await this.registerBackendListeners();
 
     try {
-      const [appInfo, devices] = await Promise.all([
+      const [appInfo, devices, appVersion] = await Promise.all([
         invoke<AppInfo>('get_app_info'),
         invoke<NearbyDevice[]>('get_nearby_devices'),
+        getVersion(),
       ]);
       this.localDeviceName = appInfo.identity.name;
       this.localPlatform = appInfo.identity.platform;
@@ -146,6 +149,7 @@ export class AppComponent implements OnInit, OnDestroy {
       this.discoverable = appInfo.settings.discoverable;
       this.networkOnline = appInfo.networkOnline;
       this.devices = devices;
+      this.appVersion = appVersion;
 
       const unlistenDragDrop = await getCurrentWebview().onDragDropEvent((event) => {
         if (event.payload.type === 'drop' && this.fileSelectionOpen) {

@@ -18,6 +18,19 @@ The recipient does not need Node.js, Rust, Visual Studio, VS Code, Codex, or the
 
 GitHub builds the DMG on a macOS runner and the EXE on a Windows runner, so both installers can be produced while working only from a Mac.
 
+## Publish a new version
+
+FileDrop releases follow normal version numbers such as `1.0.0`, `1.1.0`, and `2.0.0`.
+
+1. Update the version in `package.json`, `package-lock.json`, `src-tauri/Cargo.toml`, and `src-tauri/tauri.conf.json`.
+2. Commit and push the version change.
+3. Create and push a matching tag such as `filedrop-v1.1.0`.
+4. GitHub automatically builds both installers and publishes a release with generated release notes.
+
+For a test build that should remain private, run the workflow manually from the Actions page instead. Manual runs create draft releases.
+
+Existing users update by downloading the newer installer and installing it over their current FileDrop installation. Their persistent device identity and settings remain in the operating system's application-data directory. In-app automatic update checks are not enabled yet; those require a separately secured updater-signing key.
+
 ## Build the Mac installer locally
 
 Run `npm run installer:mac`. The DMG is created under `src-tauri/target/release/bundle/dmg`.
