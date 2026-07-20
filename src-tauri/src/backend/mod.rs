@@ -1,6 +1,7 @@
 mod identity;
 pub mod models;
 mod protocol;
+mod settings;
 mod transfer;
 
 use std::{
@@ -17,7 +18,7 @@ use std::{
 
 use mdns_sd::{ResolvedService, ServiceDaemon, ServiceEvent, ServiceInfo};
 
-pub use models::{AppInfo, BackendEvent, NearbyDevice};
+pub use models::{AppInfo, AppSettings, BackendEvent, NearbyDevice, SelectedFileInfo};
 use models::{DeviceIdentity, TransferFailed, TransferFinished, PROTOCOL_VERSION};
 use transfer::{
     new_cancellation, prepare_offer, receive_transfer, send_prepared_transfer, DecisionCallback,
@@ -32,8 +33,12 @@ pub struct Backend {
     devices: Mutex<HashMap<String, NearbyDevice>>,
     pending_decisions: Mutex<HashMap<String, mpsc::Sender<bool>>>,
     cancellations: Mutex<HashMap<String, Arc<AtomicBool>>>,
+    settings_path: PathBuf,
+    settings: Mutex<AppSettings>,
+    network_online: AtomicBool,
     emit: EventCallback,
-    _mdns: ServiceDaemon,
+    mdns: ServiceDaemon,
+    service: ServiceInfo,
 }
 
 impl Backend {
@@ -43,6 +48,7 @@ impl Backend {
         emit: EventCallback,
     ) -> Result<Arc<Self>, String> {
         let identity = identity::load_or_create(app_data_directory)?;
+        let (settings_path, settings) = settings::load(app_data_directory)?;
         let listener = TcpListener::bind("0.0.0.0:0")
             .map_err(|error| format!("Could not start the FileDrop receiver: {error}"))?;
         let port = listener
@@ -51,6 +57,8 @@ impl Backend {
             .port();
         let mdns = ServiceDaemon::new()
             .map_err(|error| format!("Could not start local-network discovery: {error}"))?;
+        let service = Self::service_info(&identity, port)?;
+        let network_online = network_is_online();
 
         let backend = Arc::new(Self {
             identity,
@@ -58,13 +66,20 @@ impl Backend {
             devices: Mutex::new(HashMap::new()),
             pending_decisions: Mutex::new(HashMap::new()),
             cancellations: Mutex::new(HashMap::new()),
+            settings_path,
+            settings: Mutex::new(settings.clone()),
+            network_online: AtomicBool::new(network_online),
             emit,
-            _mdns: mdns.clone(),
+            mdns: mdns.clone(),
+            service,
         });
 
-        backend.register_service(&mdns, port)?;
+        if settings.discoverable && network_online {
+            backend.register_service()?;
+        }
         backend.start_discovery(&mdns)?;
         backend.start_listener(listener);
+        backend.start_network_monitor();
         Ok(backend)
     }
 
@@ -73,7 +88,54 @@ impl Backend {
             identity: self.identity.clone(),
             download_directory: self.download_directory.to_string_lossy().to_string(),
             protocol_version: PROTOCOL_VERSION,
+            settings: self.settings(),
+            network_online: self.network_online.load(Ordering::Relaxed),
         }
+    }
+
+    pub fn settings(&self) -> AppSettings {
+        self.settings
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .clone()
+    }
+
+    pub fn set_discoverable(&self, enabled: bool) -> Result<AppSettings, String> {
+        let updated = self.update_settings(|settings| settings.discoverable = enabled)?;
+        if enabled && self.network_online.load(Ordering::Relaxed) {
+            self.register_service()?;
+        } else if !enabled {
+            self.unregister_service();
+        }
+        Ok(updated)
+    }
+
+    pub fn set_auto_open_received(&self, enabled: bool) -> Result<AppSettings, String> {
+        self.update_settings(|settings| settings.auto_open_received = enabled)
+    }
+
+    pub fn inspect_files(&self, paths: Vec<PathBuf>) -> Result<Vec<SelectedFileInfo>, String> {
+        paths
+            .into_iter()
+            .map(|path| {
+                let metadata = std::fs::metadata(&path)
+                    .map_err(|error| format!("Could not read {}: {error}", path.display()))?;
+                if !metadata.is_file() {
+                    return Err(format!("{} is not a file", path.display()));
+                }
+                let name = path
+                    .file_name()
+                    .and_then(|name| name.to_str())
+                    .filter(|name| !name.is_empty())
+                    .ok_or_else(|| format!("{} does not have a valid file name", path.display()))?
+                    .to_string();
+                Ok(SelectedFileInfo {
+                    path: path.to_string_lossy().to_string(),
+                    name,
+                    size: metadata.len(),
+                })
+            })
+            .collect()
     }
 
     pub fn nearby_devices(&self) -> Vec<NearbyDevice> {
@@ -153,28 +215,77 @@ impl Backend {
         Ok(())
     }
 
-    fn register_service(&self, mdns: &ServiceDaemon, port: u16) -> Result<(), String> {
-        let host_label = self.identity.id.chars().take(12).collect::<String>();
+    fn service_info(identity: &DeviceIdentity, port: u16) -> Result<ServiceInfo, String> {
+        let host_label = identity.id.chars().take(12).collect::<String>();
         let hostname = format!("filedrop-{host_label}.local.");
         let properties = [
-            ("id", self.identity.id.as_str()),
-            ("name", self.identity.name.as_str()),
-            ("platform", self.identity.platform.as_str()),
+            ("id", identity.id.as_str()),
+            ("name", identity.name.as_str()),
+            ("platform", identity.platform.as_str()),
             ("protocol", "1"),
         ];
-        let service = ServiceInfo::new(
+        ServiceInfo::new(
             SERVICE_TYPE,
-            &self.identity.id,
+            &identity.id,
             &hostname,
             "",
             port,
             &properties[..],
         )
-        .map_err(|error| format!("Could not create the discovery announcement: {error}"))?
-        .enable_addr_auto();
+        .map_err(|error| format!("Could not create the discovery announcement: {error}"))
+        .map(ServiceInfo::enable_addr_auto)
+    }
 
-        mdns.register(service)
+    fn register_service(&self) -> Result<(), String> {
+        self.mdns
+            .register(self.service.clone())
             .map_err(|error| format!("Could not announce FileDrop on the network: {error}"))
+    }
+
+    fn unregister_service(&self) {
+        let _ = self.mdns.unregister(self.service.get_fullname());
+    }
+
+    fn update_settings(
+        &self,
+        update: impl FnOnce(&mut AppSettings),
+    ) -> Result<AppSettings, String> {
+        let updated = {
+            let mut current = self
+                .settings
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            update(&mut current);
+            settings::persist(&self.settings_path, &current)?;
+            current.clone()
+        };
+        (self.emit)(BackendEvent::SettingsChanged(updated.clone()));
+        Ok(updated)
+    }
+
+    fn start_network_monitor(self: &Arc<Self>) {
+        let backend = Arc::clone(self);
+        thread::spawn(move || loop {
+            thread::sleep(Duration::from_secs(3));
+            let online = network_is_online();
+            let previous = backend.network_online.swap(online, Ordering::Relaxed);
+            if online == previous {
+                continue;
+            }
+
+            if online && backend.settings().discoverable {
+                let _ = backend.register_service();
+            } else if !online {
+                backend.unregister_service();
+                backend
+                    .devices
+                    .lock()
+                    .unwrap_or_else(|poisoned| poisoned.into_inner())
+                    .clear();
+                (backend.emit)(BackendEvent::DevicesChanged(Vec::new()));
+            }
+            (backend.emit)(BackendEvent::NetworkStatusChanged(online));
+        });
     }
 
     fn start_discovery(self: &Arc<Self>, mdns: &ServiceDaemon) -> Result<(), String> {
@@ -216,6 +327,14 @@ impl Backend {
         let decision_backend = Arc::clone(&self);
         let decide: DecisionCallback = Arc::new(move |offer| {
             let cancellation = new_cancellation();
+            if !decision_backend.settings().discoverable
+                || !decision_backend.network_online.load(Ordering::Relaxed)
+            {
+                return IncomingDecision {
+                    accepted: false,
+                    cancellation,
+                };
+            }
             let (decision_sender, decision_receiver) = mpsc::channel();
             decision_backend
                 .cancellations
@@ -330,4 +449,15 @@ impl Backend {
             (self.emit)(BackendEvent::DevicesChanged(self.nearby_devices()));
         }
     }
+}
+
+fn network_is_online() -> bool {
+    if_addrs::get_if_addrs().is_ok_and(|interfaces| {
+        interfaces.into_iter().any(|interface| {
+            interface.is_oper_up()
+                && !interface.is_loopback()
+                && !interface.is_link_local()
+                && !interface.ip().is_unspecified()
+        })
+    })
 }

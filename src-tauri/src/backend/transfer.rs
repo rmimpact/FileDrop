@@ -8,7 +8,7 @@ use std::{
         atomic::{AtomicBool, Ordering},
         Arc,
     },
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use sha2::{Digest, Sha256};
@@ -139,6 +139,7 @@ fn send_inner(
 
     let mut transferred_bytes = 0_u64;
     let mut buffer = vec![0_u8; IO_BUFFER_BYTES];
+    let started_at = Instant::now();
 
     for (file_index, (path, file_metadata)) in paths.iter().zip(&offer.files).enumerate() {
         ensure_not_cancelled(cancellation)?;
@@ -175,6 +176,7 @@ fn send_inner(
                 TransferDirection::Sending,
                 file_index,
                 transferred_bytes,
+                started_at,
             );
         }
 
@@ -323,6 +325,7 @@ fn receive_file_contents(
 ) -> Result<(), String> {
     let mut transferred_bytes = 0_u64;
     let mut buffer = vec![0_u8; IO_BUFFER_BYTES];
+    let started_at = Instant::now();
 
     for (file_index, (temporary, _)) in planned_files.iter().enumerate() {
         ensure_not_cancelled(cancellation)?;
@@ -366,6 +369,7 @@ fn receive_file_contents(
                 TransferDirection::Receiving,
                 file_index,
                 transferred_bytes,
+                started_at,
             );
         }
 
@@ -536,6 +540,7 @@ fn emit_progress(
     direction: TransferDirection,
     current_file_index: usize,
     transferred_bytes: u64,
+    started_at: Instant,
 ) {
     let progress = transferred_bytes
         .saturating_mul(100)
@@ -552,6 +557,12 @@ fn emit_progress(
         total_files: offer.files.len(),
         transferred_bytes,
         total_bytes: offer.total_bytes,
+        remaining_bytes: offer.total_bytes.saturating_sub(transferred_bytes),
+        bytes_per_second: if started_at.elapsed() < Duration::from_millis(100) {
+            0
+        } else {
+            (transferred_bytes as f64 / started_at.elapsed().as_secs_f64()) as u64
+        },
         progress,
     }));
 }
@@ -625,11 +636,18 @@ mod tests {
             fs::read(destination.join("data.bin")).expect("received second file"),
             (0_u8..=255).collect::<Vec<_>>()
         );
-        assert!(receiver_events
-            .lock()
-            .expect("events lock")
+        let events = receiver_events.lock().expect("events lock");
+        let final_progress = events
             .iter()
-            .any(|event| matches!(event, BackendEvent::TransferProgress(_))));
+            .filter_map(|event| match event {
+                BackendEvent::TransferProgress(progress) => Some(progress),
+                _ => None,
+            })
+            .next_back()
+            .expect("transfer progress event");
+        assert_eq!(final_progress.progress, 100);
+        assert_eq!(final_progress.transferred_bytes, final_progress.total_bytes);
+        assert_eq!(final_progress.remaining_bytes, 0);
 
         let _ = fs::remove_dir_all(root);
     }

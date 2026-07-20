@@ -16,6 +16,8 @@
 
   --status-border: #cacaca;
   --status-dot: #01bf63;
+  --status-warning: #e6a400;
+  --status-offline: #df3f49;
 
   --blue-icon: #00adee;
 
@@ -193,6 +195,22 @@ h1 {
   background: var(--status-dot);
 }
 
+.status-bar.status-disabled {
+  color: var(--status-warning);
+}
+
+.status-bar.status-disabled .status-dot {
+  background: var(--status-warning);
+}
+
+.status-bar.status-offline {
+  color: var(--status-offline);
+}
+
+.status-bar.status-offline .status-dot {
+  background: var(--status-offline);
+}
+
 /* Full-screen transparent layer behind the settings box */
 .settings-overlay {
   position: fixed;
@@ -245,8 +263,15 @@ h1 {
 
 /* Holds the settings controls */
 .settings-content {
+  width: 100%;
+  margin: 58px auto 0;
+  display: grid;
+  gap: 34px;
+}
+
+.setting-group {
   width: 300px;
-  margin: 250px auto 0;
+  margin: 0 auto;
 }
 
 /* Theme label */
@@ -281,6 +306,59 @@ h1 {
 .theme-selector button.active {
   background: var(--button);
   color: white;
+}
+
+.setting-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 0 22px;
+}
+
+.setting-toggle-row p {
+  margin: 0 0 5px;
+  color: var(--main-text);
+  font-size: 20px;
+}
+
+.setting-toggle-row div > span {
+  display: block;
+  max-width: 340px;
+  color: var(--light-text);
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+.toggle-switch {
+  width: 52px;
+  height: 30px;
+  flex: 0 0 52px;
+  padding: 3px;
+  border: none;
+  border-radius: 999px;
+  background: var(--settings-border);
+  box-shadow: none;
+  cursor: pointer;
+  transition: background 160ms ease;
+}
+
+.toggle-switch > span {
+  display: block;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.22);
+  transition: transform 160ms ease;
+}
+
+.toggle-switch.active {
+  background: var(--status-dot);
+}
+
+.toggle-switch.active > span {
+  transform: translateX(22px);
 }
 
 /* Version text at bottom */
@@ -381,6 +459,24 @@ h1 {
   color: var(--main-text);
   font-size: 31px;
   font-weight: 400;
+}
+
+.selected-files-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 20px;
+}
+
+.selected-files-heading h3 {
+  margin-bottom: 0;
+}
+
+.selected-files-heading > span {
+  color: var(--light-text);
+  font-size: 14px;
+  white-space: nowrap;
 }
 
 .selected-files ul {
@@ -525,9 +621,39 @@ h1 {
   background: var(--progress-fill);
 }
 
+.transfer-stats {
+  margin: 10px 32px 0 48px;
+  color: var(--light-text);
+  font-size: 14px;
+  text-align: right;
+}
+
+.transfer-stats span {
+  margin: 0 5px;
+}
+
 .sending-footer-row {
   margin-top: 13px;
   padding: 0 32px 0 48px;
+}
+
+.transfer-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.open-location-button {
+  min-width: 154px;
+  height: 43px;
+  padding: 0 18px;
+  border: 1px solid var(--settings-border);
+  border-radius: 999px;
+  background: var(--card-background);
+  color: var(--main-text);
+  box-shadow: none;
+  font-size: 16px;
+  cursor: pointer;
 }
 
 @keyframes transfer-spin {

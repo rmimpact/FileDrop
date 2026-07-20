@@ -2,7 +2,7 @@ mod backend;
 
 use std::{path::PathBuf, sync::Arc};
 
-use backend::{AppInfo, Backend, BackendEvent, NearbyDevice};
+use backend::{AppInfo, AppSettings, Backend, BackendEvent, NearbyDevice, SelectedFileInfo};
 use tauri::{Emitter, Manager};
 
 struct ManagedBackend(Arc<Backend>);
@@ -15,6 +15,32 @@ fn get_app_info(state: tauri::State<'_, ManagedBackend>) -> AppInfo {
 #[tauri::command]
 fn get_nearby_devices(state: tauri::State<'_, ManagedBackend>) -> Vec<NearbyDevice> {
     state.0.nearby_devices()
+}
+
+#[tauri::command]
+fn inspect_files(
+    state: tauri::State<'_, ManagedBackend>,
+    paths: Vec<String>,
+) -> Result<Vec<SelectedFileInfo>, String> {
+    state
+        .0
+        .inspect_files(paths.into_iter().map(PathBuf::from).collect())
+}
+
+#[tauri::command]
+fn set_discoverable(
+    state: tauri::State<'_, ManagedBackend>,
+    enabled: bool,
+) -> Result<AppSettings, String> {
+    state.0.set_discoverable(enabled)
+}
+
+#[tauri::command]
+fn set_auto_open_received(
+    state: tauri::State<'_, ManagedBackend>,
+    enabled: bool,
+) -> Result<AppSettings, String> {
+    state.0.set_auto_open_received(enabled)
 }
 
 #[tauri::command]
@@ -60,6 +86,12 @@ pub fn run() {
                 BackendEvent::DevicesChanged(devices) => {
                     let _ = app_handle.emit("devices-changed", devices);
                 }
+                BackendEvent::SettingsChanged(settings) => {
+                    let _ = app_handle.emit("settings-changed", settings);
+                }
+                BackendEvent::NetworkStatusChanged(online) => {
+                    let _ = app_handle.emit("network-status-changed", online);
+                }
                 BackendEvent::IncomingOffer(offer) => {
                     let _ = app_handle.emit("incoming-offer", offer);
                     if let Some(window) = app_handle.get_webview_window("main") {
@@ -86,6 +118,9 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             get_app_info,
             get_nearby_devices,
+            inspect_files,
+            set_discoverable,
+            set_auto_open_received,
             send_files,
             respond_to_offer,
             cancel_transfer,

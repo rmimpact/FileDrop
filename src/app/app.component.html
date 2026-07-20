@@ -27,9 +27,12 @@
     }
   </section>
 
-  <footer class="status-bar">
+  <footer
+    class="status-bar"
+    [class.status-offline]="!networkOnline"
+    [class.status-disabled]="networkOnline && !discoverable">
     <span class="status-dot"></span>
-    <span>Discoverable as {{ localDeviceName }}</span>
+    <span>{{ homeStatusText }}</span>
   </footer>
 
   @if (settingsOpen) {
@@ -44,19 +47,53 @@
         </header>
 
         <div class="settings-content">
-          <label class="setting-label">Theme</label>
+          <section class="setting-group">
+            <label class="setting-label">Theme</label>
 
-          <div class="theme-selector">
-            <button type="button" [class.active]="selectedTheme === 'auto'" (click)="setTheme('auto')">
-              Auto
+            <div class="theme-selector">
+              <button type="button" [class.active]="selectedTheme === 'auto'" (click)="setTheme('auto')">
+                Auto
+              </button>
+              <button type="button" [class.active]="selectedTheme === 'light'" (click)="setTheme('light')">
+                Light
+              </button>
+              <button type="button" [class.active]="selectedTheme === 'dark'" (click)="setTheme('dark')">
+                Dark
+              </button>
+            </div>
+          </section>
+
+          <section class="setting-toggle-row">
+            <div>
+              <p>Show received files</p>
+              <span>Open {{ fileManagerName }} after every transfer</span>
+            </div>
+            <button
+              class="toggle-switch"
+              type="button"
+              role="switch"
+              [attr.aria-checked]="autoOpenReceived"
+              [class.active]="autoOpenReceived"
+              (click)="toggleAutoOpenReceived()">
+              <span></span>
             </button>
-            <button type="button" [class.active]="selectedTheme === 'light'" (click)="setTheme('light')">
-              Light
+          </section>
+
+          <section class="setting-toggle-row">
+            <div>
+              <p>Device discoverability</p>
+              <span>Let nearby devices find and send to this device</span>
+            </div>
+            <button
+              class="toggle-switch"
+              type="button"
+              role="switch"
+              [attr.aria-checked]="discoverable"
+              [class.active]="discoverable"
+              (click)="toggleDiscoverability()">
+              <span></span>
             </button>
-            <button type="button" [class.active]="selectedTheme === 'dark'" (click)="setTheme('dark')">
-              Dark
-            </button>
-          </div>
+          </section>
         </div>
 
         <p class="version-text">ⓘ Version 1.0</p>
@@ -88,7 +125,10 @@
         </button>
 
         <section class="selected-files" aria-label="Selected files">
-          <h3>Selected files</h3>
+          <div class="selected-files-heading">
+            <h3>Selected files</h3>
+            <span>{{ formatBytes(selectedTotalBytes) }} selected</span>
+          </div>
 
           <ul>
             @for (file of selectedFiles; track file.path; let fileIndex = $index) {
@@ -245,15 +285,33 @@
         <span [style.width.%]="transferProgress"></span>
       </div>
 
+      @if (transferTotalBytes > 0 && !transferFinished) {
+        <p class="transfer-stats">
+          {{ formatBytes(transferTransferredBytes) }} of {{ formatBytes(transferTotalBytes) }}
+          <span>·</span>
+          {{ formatBytes(transferRemainingBytes) }} left
+          <span>·</span>
+          {{ formatSpeed(transferBytesPerSecond) }}
+        </p>
+      }
+
       <div class="file-selection-footer sending-footer-row">
         <div class="connection-status">
           <span class="status-dot"></span>
           <span>{{ transferFinished ? 'Transfer Complete' : 'Connection Stable' }}</span>
         </div>
 
-        <button class="continue-button" type="button" (click)="closeActiveTransfer()">
-          {{ transferFinished ? 'Done' : 'Cancel' }}
-        </button>
+        <div class="transfer-actions">
+          @if (transferFinished && receivingOpen && receivedSavedFiles.length > 0) {
+            <button class="open-location-button" type="button" (click)="revealReceivedFiles()">
+              Open in {{ fileManagerName }}
+            </button>
+          }
+
+          <button class="continue-button" type="button" (click)="closeActiveTransfer()">
+            {{ transferFinished ? 'Done' : 'Cancel' }}
+          </button>
+        </div>
       </div>
     </footer>
   </ng-template>

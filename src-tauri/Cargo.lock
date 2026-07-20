@@ -959,6 +959,7 @@ name = "filedrop"
 version = "0.1.0"
 dependencies = [
  "dirs",
+ "if-addrs",
  "mdns-sd",
  "serde",
  "serde_json",

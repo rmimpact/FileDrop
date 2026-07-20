@@ -26,6 +26,32 @@ pub struct AppInfo {
     pub identity: DeviceIdentity,
     pub download_directory: String,
     pub protocol_version: u16,
+    pub settings: AppSettings,
+    pub network_online: bool,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AppSettings {
+    pub auto_open_received: bool,
+    pub discoverable: bool,
+}
+
+impl Default for AppSettings {
+    fn default() -> Self {
+        Self {
+            auto_open_received: false,
+            discoverable: true,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SelectedFileInfo {
+    pub path: String,
+    pub name: String,
+    pub size: u64,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
@@ -64,6 +90,8 @@ pub struct TransferProgress {
     pub total_files: usize,
     pub transferred_bytes: u64,
     pub total_bytes: u64,
+    pub remaining_bytes: u64,
+    pub bytes_per_second: u64,
     pub progress: u8,
 }
 
@@ -86,6 +114,8 @@ pub struct TransferFailed {
 #[derive(Clone, Debug)]
 pub enum BackendEvent {
     DevicesChanged(Vec<NearbyDevice>),
+    SettingsChanged(AppSettings),
+    NetworkStatusChanged(bool),
     IncomingOffer(TransferOffer),
     TransferProgress(TransferProgress),
     TransferFinished(TransferFinished),

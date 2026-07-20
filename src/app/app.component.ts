@@ -4,6 +4,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen, UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWebview } from '@tauri-apps/api/webview';
 import { open } from '@tauri-apps/plugin-dialog';
+import { revealItemInDir } from '@tauri-apps/plugin-opener';
 
 type DeviceType = 'mac' | 'windows' | 'other';
 type TransferDirection = 'sending' | 'receiving';
@@ -26,11 +27,19 @@ interface AppInfo {
   identity: DeviceIdentity;
   downloadDirectory: string;
   protocolVersion: number;
+  settings: AppSettings;
+  networkOnline: boolean;
+}
+
+interface AppSettings {
+  autoOpenReceived: boolean;
+  discoverable: boolean;
 }
 
 interface SelectedFile {
   name: string;
   path: string;
+  size: number;
 }
 
 interface TransferFile {
@@ -56,6 +65,8 @@ interface TransferProgress {
   totalFiles: number;
   transferredBytes: number;
   totalBytes: number;
+  remainingBytes: number;
+  bytesPerSecond: number;
   progress: number;
 }
 
@@ -80,9 +91,13 @@ interface TransferFailed {
 })
 export class AppComponent implements OnInit, OnDestroy {
   localDeviceName = 'This Device';
+  localPlatform: DeviceType = 'other';
   downloadDirectory = '';
   settingsOpen = false;
   selectedTheme: 'auto' | 'light' | 'dark' = 'auto';
+  autoOpenReceived = false;
+  discoverable = true;
+  networkOnline = true;
 
   fileSelectionOpen = false;
   sendingOpen = false;
@@ -100,6 +115,11 @@ export class AppComponent implements OnInit, OnDestroy {
   currentFileIndex = 0;
   transferFinished = false;
   transferError = '';
+  transferTransferredBytes = 0;
+  transferTotalBytes = 0;
+  transferRemainingBytes = 0;
+  transferBytesPerSecond = 0;
+  receivedSavedFiles: string[] = [];
 
   private unlistenFunctions: UnlistenFn[] = [];
   private readonly runningInTauri = '__TAURI_INTERNALS__' in window;
@@ -120,13 +140,17 @@ export class AppComponent implements OnInit, OnDestroy {
         invoke<NearbyDevice[]>('get_nearby_devices'),
       ]);
       this.localDeviceName = appInfo.identity.name;
+      this.localPlatform = appInfo.identity.platform;
       this.downloadDirectory = appInfo.downloadDirectory;
+      this.autoOpenReceived = appInfo.settings.autoOpenReceived;
+      this.discoverable = appInfo.settings.discoverable;
+      this.networkOnline = appInfo.networkOnline;
       this.devices = devices;
 
       const unlistenDragDrop = await getCurrentWebview().onDragDropEvent((event) => {
         if (event.payload.type === 'drop' && this.fileSelectionOpen) {
           const paths = event.payload.paths;
-          this.zone.run(() => this.addFilePaths(paths));
+          this.zone.run(() => void this.addFilePaths(paths));
         }
       });
       this.unlistenFunctions.push(unlistenDragDrop);
@@ -151,6 +175,28 @@ export class AppComponent implements OnInit, OnDestroy {
 
   setTheme(theme: 'auto' | 'light' | 'dark') {
     this.selectedTheme = theme;
+  }
+
+  async toggleDiscoverability() {
+    try {
+      const settings = await invoke<AppSettings>('set_discoverable', {
+        enabled: !this.discoverable,
+      });
+      this.applySettings(settings);
+    } catch (error) {
+      this.transferError = this.errorMessage(error);
+    }
+  }
+
+  async toggleAutoOpenReceived() {
+    try {
+      const settings = await invoke<AppSettings>('set_auto_open_received', {
+        enabled: !this.autoOpenReceived,
+      });
+      this.applySettings(settings);
+    } catch (error) {
+      this.transferError = this.errorMessage(error);
+    }
   }
 
   openFileSelection(device: NearbyDevice) {
@@ -178,9 +224,9 @@ export class AppComponent implements OnInit, OnDestroy {
     });
 
     if (Array.isArray(selected)) {
-      this.addFilePaths(selected);
+      await this.addFilePaths(selected);
     } else if (selected) {
-      this.addFilePaths([selected]);
+      await this.addFilePaths([selected]);
     }
   }
 
@@ -196,6 +242,8 @@ export class AppComponent implements OnInit, OnDestroy {
     this.fileSelectionOpen = false;
     this.sendingOpen = true;
     this.transferError = '';
+    this.transferTotalBytes = this.selectedTotalBytes;
+    this.transferRemainingBytes = this.transferTotalBytes;
     const requestGeneration = ++this.sendRequestGeneration;
 
     try {
@@ -246,6 +294,8 @@ export class AppComponent implements OnInit, OnDestroy {
     if (accepted) {
       this.activeTransferId = offer.transferId;
       this.receivingOpen = true;
+      this.transferTotalBytes = offer.totalBytes;
+      this.transferRemainingBytes = offer.totalBytes;
     } else {
       this.incomingOffer = null;
       this.resetTransferState();
@@ -282,10 +332,65 @@ export class AppComponent implements OnInit, OnDestroy {
     return !this.transferFinished && fileIndex === this.currentFileIndex;
   }
 
+  get selectedTotalBytes() {
+    return this.selectedFiles.reduce((total, file) => total + file.size, 0);
+  }
+
+  get homeStatusText() {
+    if (!this.networkOnline) {
+      return 'Offline — connect to a network';
+    }
+    if (!this.discoverable) {
+      return 'Not discoverable — sharing is disabled';
+    }
+    return `Discoverable as ${this.localDeviceName}`;
+  }
+
+  get fileManagerName() {
+    return this.localPlatform === 'windows' ? 'File Explorer' : 'Finder';
+  }
+
+  formatBytes(bytes: number) {
+    if (!Number.isFinite(bytes) || bytes <= 0) {
+      return '0 MB';
+    }
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const unitIndex = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+    const value = bytes / 1024 ** unitIndex;
+    const decimals = unitIndex < 2 || value >= 100 ? 0 : value >= 10 ? 1 : 2;
+    return `${value.toFixed(decimals)} ${units[unitIndex]}`;
+  }
+
+  formatSpeed(bytesPerSecond: number) {
+    return bytesPerSecond > 0 ? `${this.formatBytes(bytesPerSecond)}/s` : 'Calculating speed…';
+  }
+
+  async revealReceivedFiles() {
+    const firstSavedFile = this.receivedSavedFiles[0];
+    if (!firstSavedFile) {
+      return;
+    }
+    try {
+      await revealItemInDir(firstSavedFile);
+    } catch (error) {
+      this.transferError = `Could not open ${this.fileManagerName}: ${this.errorMessage(error)}`;
+    }
+  }
+
   private async registerBackendListeners() {
     const devicesUnlisten = await listen<NearbyDevice[]>('devices-changed', (event) => {
       this.zone.run(() => {
         this.devices = event.payload;
+      });
+    });
+
+    const settingsUnlisten = await listen<AppSettings>('settings-changed', (event) => {
+      this.zone.run(() => this.applySettings(event.payload));
+    });
+
+    const networkUnlisten = await listen<boolean>('network-status-changed', (event) => {
+      this.zone.run(() => {
+        this.networkOnline = event.payload;
       });
     });
 
@@ -307,6 +412,8 @@ export class AppComponent implements OnInit, OnDestroy {
 
     this.unlistenFunctions.push(
       devicesUnlisten,
+      settingsUnlisten,
+      networkUnlisten,
       offerUnlisten,
       progressUnlisten,
       finishedUnlisten,
@@ -341,6 +448,10 @@ export class AppComponent implements OnInit, OnDestroy {
     this.transferProgress = progress.progress;
     this.completedFiles = progress.completedFiles;
     this.currentFileIndex = progress.currentFileIndex;
+    this.transferTransferredBytes = progress.transferredBytes;
+    this.transferTotalBytes = progress.totalBytes;
+    this.transferRemainingBytes = progress.remainingBytes;
+    this.transferBytesPerSecond = progress.bytesPerSecond;
   }
 
   private handleTransferFinished(finished: TransferFinished) {
@@ -351,6 +462,13 @@ export class AppComponent implements OnInit, OnDestroy {
     this.transferProgress = 100;
     this.completedFiles = this.transferFiles().length;
     this.transferFinished = true;
+    this.transferTransferredBytes = this.transferTotalBytes;
+    this.transferRemainingBytes = 0;
+    this.transferBytesPerSecond = 0;
+    this.receivedSavedFiles = finished.savedFiles;
+    if (finished.direction === 'receiving' && this.autoOpenReceived) {
+      void this.revealReceivedFiles();
+    }
   }
 
   private handleTransferFailed(failed: TransferFailed) {
@@ -360,15 +478,23 @@ export class AppComponent implements OnInit, OnDestroy {
     this.transferError = failed.message;
   }
 
-  private addFilePaths(paths: string[]) {
+  private async addFilePaths(paths: string[]) {
     const knownPaths = new Set(this.selectedFiles.map((file) => file.path));
-    const additions = paths
-      .filter((path) => !knownPaths.has(path))
-      .map((path) => ({
-        path,
-        name: path.split(/[\\/]/).pop() || path,
-      }));
-    this.selectedFiles = [...this.selectedFiles, ...additions];
+    const newPaths = paths.filter((path) => !knownPaths.has(path));
+    if (newPaths.length === 0) {
+      return;
+    }
+    try {
+      const additions = await invoke<SelectedFile[]>('inspect_files', { paths: newPaths });
+      this.selectedFiles = [...this.selectedFiles, ...additions];
+    } catch (error) {
+      this.transferError = this.errorMessage(error);
+    }
+  }
+
+  private applySettings(settings: AppSettings) {
+    this.autoOpenReceived = settings.autoOpenReceived;
+    this.discoverable = settings.discoverable;
   }
 
   private async cancelActiveTransfer() {
@@ -390,6 +516,11 @@ export class AppComponent implements OnInit, OnDestroy {
     this.currentFileIndex = 0;
     this.transferFinished = false;
     this.transferError = '';
+    this.transferTransferredBytes = 0;
+    this.transferTotalBytes = 0;
+    this.transferRemainingBytes = 0;
+    this.transferBytesPerSecond = 0;
+    this.receivedSavedFiles = [];
   }
 
   private errorMessage(error: unknown) {
