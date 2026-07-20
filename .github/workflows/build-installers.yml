@@ -1,0 +1,65 @@
+name: Build FileDrop installers
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "filedrop-v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-installers:
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS universal DMG
+            platform: macos-latest
+            rust_targets: aarch64-apple-darwin,x86_64-apple-darwin
+            args: --target universal-apple-darwin --bundles dmg
+          - name: Windows x64 setup executable
+            platform: windows-latest
+            rust_targets: x86_64-pc-windows-msvc
+            args: --bundles nsis
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - name: Check out FileDrop
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust_targets }}
+
+      - name: Cache Rust builds
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ./src-tauri -> target
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build installer and add it to a draft release
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: filedrop-v__VERSION__
+          releaseName: FileDrop v__VERSION__
+          releaseBody: Download the installer for your operating system. On macOS, open the DMG and drag FileDrop to Applications. On Windows, run the setup EXE; it checks for WebView2 and installs it if needed.
+          releaseDraft: true
+          prerelease: false
+          uploadUpdaterJson: false
+          releaseAssetNamePattern: FileDrop_[version]_[platform]_[arch][setup].[ext]
+          args: ${{ matrix.args }}

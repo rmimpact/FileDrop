@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "filedrop",
+  "productName": "FileDrop",
   "version": "0.1.0",
   "identifier": "com.remy.filedrop",
   "build": {
@@ -14,7 +14,7 @@
       {
         "minWidth": 900,
         "minHeight": 650,
-        "title": "filedrop",
+        "title": "FileDrop",
         "width": 800,
         "height": 600
       }

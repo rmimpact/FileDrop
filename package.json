@@ -5,6 +5,8 @@
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
+    "installer:mac": "tauri build --bundles dmg",
+    "installer:windows": "tauri build --bundles nsis",
     "watch": "ng build --watch --configuration development",
     "tauri": "tauri"
   },
