@@ -37,11 +37,70 @@ Run `npm run installer:mac`. The DMG is created under `src-tauri/target/release/
 
 The Windows command is `npm run installer:windows`, but it must be run on Windows. The GitHub workflow is the recommended way to build it.
 
-## Signing before public distribution
+## One-time Mac signing setup
 
-The current workflow creates test-ready installers without paid signing certificates. For a warning-free public release:
+The release workflow signs the Mac app with an Apple **Developer ID Application** certificate, submits the DMG to Apple's automated notary service, and staples the approval ticket to the finished installer. This is the correct distribution method for FileDrop because it is downloaded directly rather than installed through the Mac App Store.
 
-- macOS requires an Apple Developer ID certificate and Apple notarization.
-- Windows requires a code-signing certificate to avoid an unknown-publisher or SmartScreen warning.
+Do not put certificates, passwords, private keys, or their encoded contents in this repository. Store all six values below as GitHub Actions repository secrets under **Settings → Secrets and variables → Actions**.
 
-Signing changes installer trust only; it does not change FileDrop's transfer features.
+### 1. Create and install the certificate
+
+Only the Apple Developer Account Holder can create a Developer ID certificate.
+
+1. Open **Keychain Access** on the Mac.
+2. Choose **Keychain Access → Certificate Assistant → Request a Certificate from a Certificate Authority**.
+3. Enter the Apple Developer account email and a descriptive common name, leave the CA email blank, select **Saved to disk**, and save the certificate request.
+4. Sign in to [Apple Developer Certificates](https://developer.apple.com/account/resources/certificates/list), create a certificate, choose **Developer ID Application**, and upload the certificate request.
+5. Download the `.cer` file and double-click it to install it in the login keychain.
+6. In Keychain Access, open **login → My Certificates**. The new Developer ID Application certificate must have a private key nested underneath it.
+
+A **Developer ID Installer** certificate is not required for the FileDrop DMG. That certificate type is for `.pkg` installers.
+
+### 2. Export the certificate for GitHub
+
+1. In **Keychain Access → login → My Certificates**, expand the Developer ID Application certificate.
+2. Select the certificate and its private key, then export them together as a password-protected `.p12` file.
+3. Choose a strong one-time export password. Add it to GitHub as the `APPLE_CERTIFICATE_PASSWORD` secret.
+4. Convert the `.p12` file to a single-line Base64 value:
+
+   ```sh
+   openssl base64 -A -in /path/to/filedrop-developer-id.p12
+   ```
+
+5. Copy the command's output into the `APPLE_CERTIFICATE` GitHub secret.
+6. Generate another long random password and save it as the `KEYCHAIN_PASSWORD` GitHub secret. It protects only the temporary Keychain created on GitHub's build runner.
+7. Securely archive the `.p12` file and its password as a signing-key backup, then delete unneeded working copies.
+
+### 3. Add Apple notarization credentials
+
+1. Go to [Apple Account Sign-In and Security](https://account.apple.com/account/manage), create an **app-specific password**, and label it `FileDrop GitHub notarization`.
+2. Add the app-specific password to GitHub as `APPLE_PASSWORD`. Do not use the normal Apple account password.
+3. Add the Apple account email as `APPLE_ID`.
+4. Find the 10-character Team ID on the [Apple Developer Membership](https://developer.apple.com/account#MembershipDetailsCard) page and add it as `APPLE_TEAM_ID`.
+
+The six required repository secrets are therefore:
+
+| GitHub secret | Value |
+| --- | --- |
+| `APPLE_CERTIFICATE` | Single-line Base64 contents of the exported `.p12` certificate |
+| `APPLE_CERTIFICATE_PASSWORD` | Password chosen when exporting the `.p12` certificate |
+| `KEYCHAIN_PASSWORD` | A new random password for GitHub's temporary build Keychain |
+| `APPLE_ID` | Apple Developer account email address |
+| `APPLE_PASSWORD` | Apple app-specific password, not the normal account password |
+| `APPLE_TEAM_ID` | Apple Developer Team ID |
+
+### 4. Produce and verify the signed installer
+
+Run **Build FileDrop installers** manually from GitHub Actions. The result remains a draft release so it can be tested before publication.
+
+After downloading the DMG, verify it on a Mac:
+
+```sh
+codesign --verify --deep --strict --verbose=2 "/Applications/FileDrop.app"
+spctl --assess --type execute --verbose=4 "/Applications/FileDrop.app"
+xcrun stapler validate "/path/to/FileDrop.dmg"
+```
+
+The first public test should also be performed on a different Mac that has never run FileDrop. Download the DMG through a browser so macOS applies its normal internet quarantine checks.
+
+Signing changes installer trust only; it does not change FileDrop's transfer features. Windows still needs a separate Windows code-signing certificate to avoid an unknown-publisher or SmartScreen warning.

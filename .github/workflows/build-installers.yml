@@ -50,7 +50,72 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
-      - name: Build installer and add it to a draft release
+      - name: Import Apple Developer ID certificate
+        if: runner.os == 'macOS'
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          CERTIFICATE_PATH="$RUNNER_TEMP/filedrop-developer-id.p12"
+          KEYCHAIN_PATH="$RUNNER_TEMP/filedrop-signing.keychain-db"
+
+          printf '%s' "$APPLE_CERTIFICATE" | base64 --decode > "$CERTIFICATE_PATH"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$CERTIFICATE_PATH" \
+            -P "$APPLE_CERTIFICATE_PASSWORD" \
+            -A \
+            -t cert \
+            -f pkcs12 \
+            -k "$KEYCHAIN_PATH"
+          security set-key-partition-list \
+            -S apple-tool:,apple:,codesign: \
+            -s \
+            -k "$KEYCHAIN_PASSWORD" \
+            "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH"
+
+          CERTIFICATE_IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" \
+            | sed -n 's/.*"\(Developer ID Application:.*\)"/\1/p' \
+            | head -n 1)
+
+          if [ -z "$CERTIFICATE_IDENTITY" ]; then
+            echo "No Developer ID Application identity was found in the imported certificate."
+            exit 1
+          fi
+
+          echo "APPLE_SIGNING_IDENTITY=$CERTIFICATE_IDENTITY" >> "$GITHUB_ENV"
+
+      - name: Build signed and notarized Mac installer and add it to the release
+        if: runner.os == 'macOS'
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        with:
+          tagName: filedrop-v__VERSION__
+          releaseName: FileDrop v__VERSION__
+          releaseBody: |
+            Download the installer for your operating system:
+
+            - macOS: open the DMG and drag FileDrop to Applications.
+            - Windows: run the setup EXE. It checks for WebView2 and installs it if needed.
+
+            The macOS installer is signed with Apple Developer ID and notarized by Apple.
+            The Windows installer is not yet commercially code-signed, so Windows SmartScreen may ask you to confirm that you want to run FileDrop.
+          releaseDraft: ${{ github.event_name == 'workflow_dispatch' }}
+          prerelease: false
+          generateReleaseNotes: true
+          uploadUpdaterJson: false
+          releaseAssetNamePattern: FileDrop_[version]_[platform]_[arch][setup].[ext]
+          args: ${{ matrix.args }}
+
+      - name: Build Windows installer and add it to the release
+        if: runner.os == 'Windows'
         uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -63,7 +128,8 @@ jobs:
             - macOS: open the DMG and drag FileDrop to Applications.
             - Windows: run the setup EXE. It checks for WebView2 and installs it if needed.
 
-            These early builds are not yet commercially code-signed, so macOS Gatekeeper or Windows SmartScreen may ask you to confirm that you want to open FileDrop.
+            The macOS installer is signed with Apple Developer ID and notarized by Apple.
+            The Windows installer is not yet commercially code-signed, so Windows SmartScreen may ask you to confirm that you want to run FileDrop.
           releaseDraft: ${{ github.event_name == 'workflow_dispatch' }}
           prerelease: false
           generateReleaseNotes: true
