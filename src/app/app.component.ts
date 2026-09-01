@@ -91,11 +91,6 @@ interface TransferFailed {
   styleUrl: './app.component.css',
 })
 export class AppComponent implements OnInit, OnDestroy {
-  readonly sampleDevices: NearbyDevice[] = [
-    { id: 'sample-mac', name: 'Sample Mac', platform: 'mac', address: '127.0.0.1', port: 0 },
-    { id: 'sample-windows', name: 'Sample Windows', platform: 'windows', address: '127.0.0.1', port: 0 },
-  ];
-
   localDeviceName = 'This Device';
   localPlatform: DeviceType = 'other';
   appVersion = '1.0.3';

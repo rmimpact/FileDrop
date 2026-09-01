@@ -10,24 +10,6 @@
   </section>
 
   <section class="device-grid" aria-label="Nearby devices">
-    @for (device of sampleDevices; track device.id) {
-      <article class="device-card sample-device-card">
-        <div class="device-icon">
-          @if (device.platform === 'mac') {
-            <img class="mac-icon" src="assets/icons/apple-flat.svg" alt="macOS device">
-          } @else {
-            <img class="windows-icon" src="assets/icons/windows-flat.svg" alt="Windows device">
-          }
-        </div>
-
-        <p class="device-name">{{ device.name }}</p>
-
-        <button class="send-button" type="button" (click)="openFileSelection(device)">
-          Send
-        </button>
-      </article>
-    }
-
     @for (device of devices; track device.id) {
       <article class="device-card">
         <div class="device-icon">

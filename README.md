@@ -27,7 +27,6 @@ These links always download the newest release and do not need to be changed whe
 - Save received files directly to the Downloads folder
 - Light, dark, and automatic themes
 - Settings for discoverability and automatically opening received files
-- Sample macOS and Windows devices for previewing the interface
 - Modern desktop interface built with Angular
 - Native desktop application powered by Tauri and Rust
 
