@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.4 - 2026-09-01
+
+- Removed the sample macOS and Windows device cards from the production device list.
+
 ## 1.0.3 - 2026-09-01
 
 - Added permanent latest-release download URLs for macOS and Windows.

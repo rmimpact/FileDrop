@@ -956,7 +956,7 @@ dependencies = [
 
 [[package]]
 name = "filedrop"
-version = "1.0.3"
+version = "1.0.4"
 dependencies = [
  "dirs",
  "if-addrs",

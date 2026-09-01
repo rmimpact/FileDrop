@@ -93,7 +93,7 @@ interface TransferFailed {
 export class AppComponent implements OnInit, OnDestroy {
   localDeviceName = 'This Device';
   localPlatform: DeviceType = 'other';
-  appVersion = '1.0.3';
+  appVersion = '1.0.4';
   downloadDirectory = '';
   settingsOpen = false;
   settingsClosing = false;
