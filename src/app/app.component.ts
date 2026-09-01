@@ -98,7 +98,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
   localDeviceName = 'This Device';
   localPlatform: DeviceType = 'other';
-  appVersion = '1.0.2';
+  appVersion = '1.0.3';
   downloadDirectory = '';
   settingsOpen = false;
   settingsClosing = false;

@@ -4,6 +4,13 @@ A modern cross-platform file sharing application for macOS and Windows.
 
 FileDrop lets you quickly send files between nearby devices over the same local network (Wi-Fi or Ethernet) without needing cloud storage, accounts, USB drives, or internet access.
 
+## Download
+
+- [Download FileDrop for macOS](https://github.com/rmimpact/FileDrop/releases/latest/download/FileDrop-macOS.dmg)
+- [Download FileDrop for Windows](https://github.com/rmimpact/FileDrop/releases/latest/download/FileDrop-Windows-x64-Setup.exe)
+
+These links always download the newest release and do not need to be changed when FileDrop is updated.
+
 ---
 
 ## Features

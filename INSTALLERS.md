@@ -5,6 +5,13 @@ FileDrop produces two normal desktop installers:
 - **macOS:** a universal `.dmg` for both Apple Silicon and Intel Macs. Open it and drag FileDrop into Applications.
 - **Windows:** a 64-bit NSIS `-setup.exe`. It installs for the current user without requiring administrator access. It checks for Microsoft Edge WebView2 and downloads and installs it only when it is missing.
 
+Use these permanent direct-download links on websites and in app catalogues:
+
+- **macOS:** `https://github.com/rmimpact/FileDrop/releases/latest/download/FileDrop-macOS.dmg`
+- **Windows:** `https://github.com/rmimpact/FileDrop/releases/latest/download/FileDrop-Windows-x64-Setup.exe`
+
+GitHub redirects each link to the matching installer in the newest published release. The workflow keeps the asset names stable, so these URLs never need a version-number update.
+
 The recipient does not need Node.js, Rust, Visual Studio, VS Code, Codex, or the repository. Those are development tools used only while building FileDrop.
 
 ## Build both installers
@@ -22,7 +29,7 @@ GitHub builds the DMG on a macOS runner and the EXE on a Windows runner, so both
 
 FileDrop releases follow normal version numbers such as `1.0.0`, `1.1.0`, and `2.0.0`.
 
-1. Update the version in `package.json`, `package-lock.json`, `src-tauri/Cargo.toml`, and `src-tauri/tauri.conf.json`.
+1. Update the version in `package.json`, `package-lock.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`, and the frontend fallback in `src/app/app.component.ts`.
 2. Commit and push the version change.
 3. Create and push a matching tag such as `filedrop-v1.1.0`.
 4. GitHub automatically builds both installers and publishes a release with generated release notes.

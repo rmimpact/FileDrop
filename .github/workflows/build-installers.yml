@@ -111,7 +111,7 @@ jobs:
           prerelease: false
           generateReleaseNotes: true
           uploadUpdaterJson: false
-          releaseAssetNamePattern: FileDrop_[version]_[platform]_[arch][setup].[ext]
+          releaseAssetNamePattern: FileDrop-macOS.[ext]
           args: ${{ matrix.args }}
 
       - name: Build Windows installer and add it to the release
@@ -134,5 +134,5 @@ jobs:
           prerelease: false
           generateReleaseNotes: true
           uploadUpdaterJson: false
-          releaseAssetNamePattern: FileDrop_[version]_[platform]_[arch][setup].[ext]
+          releaseAssetNamePattern: FileDrop-Windows-x64-Setup.[ext]
           args: ${{ matrix.args }}

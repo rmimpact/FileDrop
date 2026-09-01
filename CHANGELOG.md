@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.3 - 2026-09-01
+
+- Added permanent latest-release download URLs for macOS and Windows.
+- Standardized release asset names so website and app-catalogue links no longer need version updates.
+
 ## 1.0.2 - 2026-09-01
 
 - Added clean, flat macOS, Windows, and settings icons that match the interface.
