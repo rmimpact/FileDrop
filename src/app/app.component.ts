@@ -91,11 +91,17 @@ interface TransferFailed {
   styleUrl: './app.component.css',
 })
 export class AppComponent implements OnInit, OnDestroy {
+  readonly sampleDevices: NearbyDevice[] = [
+    { id: 'sample-mac', name: 'Sample Mac', platform: 'mac', address: '127.0.0.1', port: 0 },
+    { id: 'sample-windows', name: 'Sample Windows', platform: 'windows', address: '127.0.0.1', port: 0 },
+  ];
+
   localDeviceName = 'This Device';
   localPlatform: DeviceType = 'other';
-  appVersion = '1.0.0';
+  appVersion = '1.0.2';
   downloadDirectory = '';
   settingsOpen = false;
+  settingsClosing = false;
   selectedTheme: 'auto' | 'light' | 'dark' = 'auto';
   autoOpenReceived = false;
   discoverable = true;
@@ -126,6 +132,7 @@ export class AppComponent implements OnInit, OnDestroy {
   private unlistenFunctions: UnlistenFn[] = [];
   private readonly runningInTauri = '__TAURI_INTERNALS__' in window;
   private sendRequestGeneration = 0;
+  private settingsCloseTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(private readonly zone: NgZone) {}
 
@@ -164,17 +171,35 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    if (this.settingsCloseTimer) {
+      clearTimeout(this.settingsCloseTimer);
+    }
+
     for (const unlisten of this.unlistenFunctions) {
       unlisten();
     }
   }
 
   openSettings() {
+    if (this.settingsCloseTimer) {
+      clearTimeout(this.settingsCloseTimer);
+      this.settingsCloseTimer = null;
+    }
+    this.settingsClosing = false;
     this.settingsOpen = true;
   }
 
   closeSettings() {
-    this.settingsOpen = false;
+    if (!this.settingsOpen || this.settingsClosing) {
+      return;
+    }
+
+    this.settingsClosing = true;
+    this.settingsCloseTimer = setTimeout(() => {
+      this.settingsOpen = false;
+      this.settingsClosing = false;
+      this.settingsCloseTimer = null;
+    }, 170);
   }
 
   setTheme(theme: 'auto' | 'light' | 'dark') {
@@ -436,7 +461,12 @@ export class AppComponent implements OnInit, OnDestroy {
 
     this.resetTransferState();
     this.incomingOffer = offer;
+    if (this.settingsCloseTimer) {
+      clearTimeout(this.settingsCloseTimer);
+      this.settingsCloseTimer = null;
+    }
     this.settingsOpen = false;
+    this.settingsClosing = false;
     this.fileSelectionOpen = false;
     this.selectedDevice = null;
     this.selectedFiles = [];

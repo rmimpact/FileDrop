@@ -5,15 +5,39 @@
   <section class="top-bar">
     <h1>Devices</h1>
     <button class="settings-button" type="button" aria-label="Open settings" (click)="openSettings()">
-      ⚙
+      <img src="assets/icons/settings-flat.svg" alt="" aria-hidden="true">
     </button>
   </section>
 
   <section class="device-grid" aria-label="Nearby devices">
+    @for (device of sampleDevices; track device.id) {
+      <article class="device-card sample-device-card">
+        <div class="device-icon">
+          @if (device.platform === 'mac') {
+            <img class="mac-icon" src="assets/icons/apple-flat.svg" alt="macOS device">
+          } @else {
+            <img class="windows-icon" src="assets/icons/windows-flat.svg" alt="Windows device">
+          }
+        </div>
+
+        <p class="device-name">{{ device.name }}</p>
+
+        <button class="send-button" type="button" (click)="openFileSelection(device)">
+          Send
+        </button>
+      </article>
+    }
+
     @for (device of devices; track device.id) {
       <article class="device-card">
-        <div class="device-icon" [class.windows]="device.platform === 'windows'">
-          {{ device.platform === 'mac' ? '' : '⊞' }}
+        <div class="device-icon">
+          @if (device.platform === 'mac') {
+            <img class="mac-icon" src="assets/icons/apple-flat.svg" alt="macOS device">
+          } @else if (device.platform === 'windows') {
+            <img class="windows-icon" src="assets/icons/windows-flat.svg" alt="Windows device">
+          } @else {
+            <span class="other-device-icon" aria-label="Device">◇</span>
+          }
         </div>
 
         <p class="device-name">{{ device.name }}</p>
@@ -36,13 +60,15 @@
   </footer>
 
   @if (settingsOpen) {
-    <section class="settings-overlay">
+    <section class="settings-overlay settings-transition" [class.closing]="settingsClosing">
       <div class="settings-modal">
         <header class="settings-header">
           <h2>Settings</h2>
 
           <button class="close-button" type="button" aria-label="Close settings" (click)="closeSettings()">
-            ×
+            <svg class="close-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6.5 6.5 17.5 17.5M17.5 6.5 6.5 17.5" />
+            </svg>
           </button>
         </header>
 
@@ -115,7 +141,9 @@
           </div>
 
           <button class="close-button" type="button" aria-label="Close file selection" (click)="closeFileSelection()">
-            ×
+            <svg class="close-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6.5 6.5 17.5 17.5M17.5 6.5 6.5 17.5" />
+            </svg>
           </button>
         </header>
 
@@ -178,7 +206,9 @@
           </div>
 
           <button class="close-button" type="button" aria-label="Cancel sending" (click)="cancelSending()">
-            ×
+            <svg class="close-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6.5 6.5 17.5 17.5M17.5 6.5 6.5 17.5" />
+            </svg>
           </button>
         </header>
 
@@ -242,7 +272,9 @@
           </div>
 
           <button class="close-button" type="button" aria-label="Cancel receiving" (click)="cancelReceiving()">
-            ×
+            <svg class="close-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6.5 6.5 17.5 17.5M17.5 6.5 6.5 17.5" />
+            </svg>
           </button>
         </header>
 

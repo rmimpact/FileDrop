@@ -94,12 +94,30 @@ h1 {
 
 /* Settings cog button */
 .settings-button {
+  width: 58px;
+  height: 58px;
+  padding: 9px;
   border: none;
+  border-radius: 14px;
   background: transparent;
-  color: var(--main-text);
   box-shadow: none;
-  font-size: 60px;
   cursor: pointer;
+  transition: background 160ms ease, transform 160ms ease;
+}
+
+.settings-button:hover {
+  background: color-mix(in srgb, var(--main-text) 7%, transparent);
+}
+
+.settings-button:active {
+  transform: translateY(0) scale(0.96);
+}
+
+.settings-button img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 /* Holds all device cards and scrolls only this middle area */
@@ -138,16 +156,35 @@ h1 {
   justify-content: space-between;
 }
 
-/* Mac / Windows icon */
+/* Platform artwork */
 .device-icon {
-  font-size: 63px;
-  line-height: 1;
+  width: 68px;
+  height: 68px;
+  display: grid;
+  place-items: center;
 }
 
-/* Makes the Windows icon blue */
-.device-icon.windows {
+.device-icon img {
+  display: block;
+  width: 58px;
+  height: 58px;
+  object-fit: contain;
+}
+
+.device-icon .windows-icon {
+  width: 54px;
+  height: 54px;
+}
+
+.filedrop-shell.dark-theme .mac-icon,
+.filedrop-shell.dark-theme .settings-button img {
+  filter: invert(1);
+}
+
+.other-device-icon {
   color: var(--blue-icon);
-  font-weight: bold;
+  font-size: 58px;
+  line-height: 1;
 }
 
 /* Device name text */
@@ -223,6 +260,23 @@ h1 {
   z-index: 10;
 }
 
+.settings-transition {
+  animation: settings-overlay-in 180ms ease-out both;
+}
+
+.settings-transition .settings-modal {
+  animation: settings-modal-in 180ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
+}
+
+.settings-transition.closing {
+  pointer-events: none;
+  animation: settings-overlay-out 160ms ease-in both;
+}
+
+.settings-transition.closing .settings-modal {
+  animation: settings-modal-out 160ms ease-in both;
+}
+
 /* Main settings popup */
 .settings-modal {
   width: 610px;
@@ -252,13 +306,67 @@ h1 {
 
 /* X close button */
 .close-button {
+  width: 48px;
+  height: 48px;
+  padding: 10px;
   border: none;
+  border-radius: 50%;
   background: transparent;
   color: var(--main-text);
   box-shadow: none;
-  font-size: 54px;
-  line-height: 1;
   cursor: pointer;
+  transition: background 150ms ease, transform 150ms ease;
+}
+
+.close-button:hover {
+  background: color-mix(in srgb, var(--main-text) 7%, transparent);
+}
+
+.close-button:active {
+  transform: scale(0.92);
+}
+
+.close-icon {
+  display: block;
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+@keyframes settings-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes settings-overlay-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes settings-modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes settings-modal-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(7px) scale(0.99);
+  }
 }
 
 /* Holds the settings controls */

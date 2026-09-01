@@ -6,7 +6,7 @@ FileDrop lets you quickly send files between nearby devices over the same local 
 
 ---
 
-## Features (Version 1)
+## Features
 
 - Discover nearby devices automatically
 - Send files between:
@@ -14,10 +14,13 @@ FileDrop lets you quickly send files between nearby devices over the same local 
   - Windows → Windows
   - macOS → Windows
   - Windows → macOS
-- Drag and drop file sending
+- Select, drag, and drop one or multiple files
 - Accept / Deny transfer requests
-- Transfer progress bar
+- Live transfer progress, speed, and remaining data
 - Save received files directly to the Downloads folder
+- Light, dark, and automatic themes
+- Settings for discoverability and automatically opening received files
+- Sample macOS and Windows devices for previewing the interface
 - Modern desktop interface built with Angular
 - Native desktop application powered by Tauri and Rust
 
@@ -25,15 +28,10 @@ FileDrop lets you quickly send files between nearby devices over the same local 
 
 ## Planned Features
 
-- Send multiple files
 - Send folders
 - Transfer history
 - Device nicknames
-- File transfer speed indicator
-- Estimated time remaining
 - Custom save locations
-- Dark mode
-- Settings page
 
 ---
 

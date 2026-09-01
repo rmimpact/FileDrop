@@ -1,0 +1,13 @@
+# Changelog
+
+## 1.0.2 - 2026-09-01
+
+- Added clean, flat macOS, Windows, and settings icons that match the interface.
+- Added sample macOS and Windows device cards so the device view is populated for previewing.
+- Added subtle opening and closing animations to Settings.
+- Replaced the sharp close glyphs with consistent rounded close icons and interaction states.
+
+## 1.0.1
+
+- Added signed and notarized universal macOS releases.
+- Added automated macOS and Windows installer publishing through GitHub Actions.
