@@ -77,7 +77,14 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_process::init())
         .setup(|app| {
+            // Desktop releases use Tauri's signed updater. Mobile releases will use
+            // their platform stores, so the updater is intentionally desktop-only.
+            #[cfg(desktop)]
+            app.handle()
+                .plugin(tauri_plugin_updater::Builder::new().build())?;
+
             let app_data_directory = app.path().app_data_dir()?;
             let download_directory =
                 dirs::download_dir().unwrap_or_else(|| app_data_directory.join("Downloads"));

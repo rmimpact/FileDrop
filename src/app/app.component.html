@@ -102,9 +102,94 @@
               <span></span>
             </button>
           </section>
+
+          @if (desktopUpdatesSupported) {
+            <section class="settings-update-row">
+              <div>
+                <p>Software updates</p>
+                <span aria-live="polite">{{ updateSettingsText }}</span>
+              </div>
+              <button
+                class="check-update-button"
+                type="button"
+                [disabled]="updateStatus === 'checking' || updateStatus === 'downloading' || updateStatus === 'installing'"
+                (click)="checkForUpdates()">
+                {{ availableUpdate ? 'View update' : updateStatus === 'checking' ? 'Checking…' : 'Check now' }}
+              </button>
+            </section>
+          }
         </div>
 
         <p class="version-text">ⓘ Version {{ appVersion }}</p>
+      </div>
+    </section>
+  }
+
+  @if (updatePromptOpen && availableUpdate) {
+    <section class="settings-overlay update-overlay" role="dialog" aria-modal="true" aria-labelledby="update-title">
+      <div class="update-modal">
+        <header class="update-header">
+          <div class="update-mark" aria-hidden="true">↑</div>
+          <div>
+            <p>FileDrop update</p>
+            <h2 id="update-title">Version {{ availableUpdate.version }} is ready</h2>
+          </div>
+
+          @if (updateStatus !== 'downloading' && updateStatus !== 'installing') {
+            <button class="close-button" type="button" aria-label="Update later" (click)="postponeUpdate()">
+              <svg class="close-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M6.5 6.5 17.5 17.5M17.5 6.5 6.5 17.5" />
+              </svg>
+            </button>
+          }
+        </header>
+
+        <p class="update-description">
+          A new version of FileDrop is available. FileDrop will restart after the update is installed.
+        </p>
+
+        @if (availableUpdate.notes) {
+          <div class="update-notes">
+            <h3>What’s new</h3>
+            <p>{{ availableUpdate.notes }}</p>
+          </div>
+        }
+
+        @if (updateStatus === 'downloading' || updateStatus === 'installing') {
+          <div class="update-progress-area" aria-live="polite">
+            <div
+              class="update-progress"
+              [class.indeterminate]="updateStatus === 'downloading' && updateTotalBytes <= 0"
+              role="progressbar"
+              [attr.aria-valuemin]="0"
+              [attr.aria-valuemax]="100"
+              [attr.aria-valuenow]="updateTotalBytes > 0 ? updateDownloadProgress : null">
+              <span [style.width.%]="updateStatus === 'installing' ? 100 : updateDownloadProgress"></span>
+            </div>
+            <p>{{ updateSettingsText }}</p>
+          </div>
+        }
+
+        @if (updateError) {
+          <p class="update-error" role="alert">{{ updateError }}</p>
+        }
+
+        <footer class="update-actions">
+          <button
+            class="update-later-button"
+            type="button"
+            [disabled]="updateStatus === 'downloading' || updateStatus === 'installing'"
+            (click)="postponeUpdate()">
+            Later
+          </button>
+          <button
+            class="update-now-button"
+            type="button"
+            [disabled]="updateStatus === 'downloading' || updateStatus === 'installing'"
+            (click)="installUpdate()">
+            {{ updateStatus === 'downloading' ? 'Downloading…' : updateStatus === 'installing' ? 'Installing…' : 'Update now' }}
+          </button>
+        </footer>
       </div>
     </section>
   }

@@ -14,6 +14,9 @@ jobs:
     name: ${{ matrix.name }}
     strategy:
       fail-fast: false
+      # Each platform contributes to the same latest.json file. Serial builds avoid
+      # two jobs replacing that manifest at the same time.
+      max-parallel: 1
       matrix:
         include:
           - name: macOS universal DMG
@@ -49,6 +52,16 @@ jobs:
 
       - name: Install frontend dependencies
         run: npm ci
+
+      - name: Verify updater signing is configured
+        shell: bash
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          if [ -z "$TAURI_SIGNING_PRIVATE_KEY" ]; then
+            echo "Add TAURI_SIGNING_PRIVATE_KEY under repository Settings > Secrets and variables > Actions."
+            exit 1
+          fi
 
       - name: Import Apple Developer ID certificate
         if: runner.os == 'macOS'
@@ -96,6 +109,8 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
         with:
           tagName: filedrop-v__VERSION__
           releaseName: FileDrop v__VERSION__
@@ -110,7 +125,7 @@ jobs:
           releaseDraft: ${{ github.event_name == 'workflow_dispatch' }}
           prerelease: false
           generateReleaseNotes: true
-          uploadUpdaterJson: false
+          uploadUpdaterJson: true
           releaseAssetNamePattern: FileDrop-macOS.[ext]
           args: ${{ matrix.args }}
 
@@ -119,6 +134,8 @@ jobs:
         uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
         with:
           tagName: filedrop-v__VERSION__
           releaseName: FileDrop v__VERSION__
@@ -133,6 +150,7 @@ jobs:
           releaseDraft: ${{ github.event_name == 'workflow_dispatch' }}
           prerelease: false
           generateReleaseNotes: true
-          uploadUpdaterJson: false
+          uploadUpdaterJson: true
+          updaterJsonPreferNsis: true
           releaseAssetNamePattern: FileDrop-Windows-x64-Setup.[ext]
           args: ${{ matrix.args }}

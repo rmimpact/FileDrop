@@ -27,6 +27,7 @@ These links always download the newest release and do not need to be changed whe
 - Save received files directly to the Downloads folder
 - Light, dark, and automatic themes
 - Settings for discoverability and automatically opening received files
+- Signed in-app updates with automatic and manual update checks
 - Modern desktop interface built with Angular
 - Native desktop application powered by Tauri and Rust
 
@@ -45,7 +46,7 @@ These links always download the newest release and do not need to be changed whe
 
 - End-to-end encryption
 - Internet file sharing
-- Mobile (iOS & Android)
+- Mobile clients for iPhone and Android (planned separately; not part of the desktop updater)
 - Bluetooth transfers
 - File synchronization
 - Clipboard sharing

@@ -29,14 +29,32 @@ GitHub builds the DMG on a macOS runner and the EXE on a Windows runner, so both
 
 FileDrop releases follow normal version numbers such as `1.0.0`, `1.1.0`, and `2.0.0`.
 
-1. Update the version in `package.json`, `package-lock.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`, and the frontend fallback in `src/app/app.component.ts`.
-2. Commit and push the version change.
+1. Set the version everywhere with one command: `npm run release:version -- 1.1.0`.
+2. Commit and push the release changes.
 3. Create and push a matching tag such as `filedrop-v1.1.0`.
-4. GitHub automatically builds both installers and publishes a release with generated release notes.
+4. GitHub automatically builds the macOS and Windows installers, their signed update packages, and `latest.json`, then publishes the release with generated release notes.
+
+Installed updater-enabled copies of FileDrop check that manifest when they open. If its version is newer, the app offers **Update now** or **Later**. Users can also choose **Check now** under **Settings → Software updates**. Updates are downloaded only after the user accepts, cryptographically verified, installed, and followed by an app restart.
 
 For a test build that should remain private, run the workflow manually from the Actions page instead. Manual runs create draft releases.
 
-Existing users update by downloading the newer installer and installing it over their current FileDrop installation. Their persistent device identity and settings remain in the operating system's application-data directory. In-app automatic update checks are not enabled yet; those require a separately secured updater-signing key.
+FileDrop builds released before the updater was added cannot discover it retroactively. Those users need to install the first updater-enabled release once from the normal download link. Their persistent device identity and settings remain in the operating system's application-data directory. Every release after that can update in-app.
+
+## One-time updater signing setup
+
+Tauri requires every update to be signed. The public verification key is committed in `src-tauri/tauri.conf.json`; the private key must never be committed or shared.
+
+The development private key is stored at `~/.tauri/filedrop-updater.key`. Back it up in the project's secure credential vault before publishing the first updater-enabled release. Losing it means existing installations cannot trust future updates.
+
+In the GitHub repository, open **Settings → Secrets and variables → Actions** and create this repository secret:
+
+| GitHub secret | Value |
+| --- | --- |
+| `TAURI_SIGNING_PRIVATE_KEY` | The complete contents of `~/.tauri/filedrop-updater.key` |
+
+The generated key is not password-protected, so `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` is not needed. Access to the key file is restricted to the local macOS account. The release workflow passes the private key only to the isolated build jobs and publishes signatures beside each update package.
+
+Do not rotate the updater key casually. A key change needs a transition release signed by the old key or older installations will reject every later update.
 
 ## Build the Mac installer locally
 

@@ -6,9 +6,14 @@ import { listen, UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWebview } from '@tauri-apps/api/webview';
 import { open } from '@tauri-apps/plugin-dialog';
 import { revealItemInDir } from '@tauri-apps/plugin-opener';
+import {
+  AppUpdateService,
+  AvailableAppUpdate,
+} from './app-update.service';
 
 type DeviceType = 'mac' | 'windows' | 'other';
 type TransferDirection = 'sending' | 'receiving';
+type UpdateStatus = 'idle' | 'checking' | 'available' | 'downloading' | 'installing' | 'up-to-date' | 'error';
 
 interface DeviceIdentity {
   id: string;
@@ -93,7 +98,7 @@ interface TransferFailed {
 export class AppComponent implements OnInit, OnDestroy {
   localDeviceName = 'This Device';
   localPlatform: DeviceType = 'other';
-  appVersion = '1.0.4';
+  appVersion = '1.1.0';
   downloadDirectory = '';
   settingsOpen = false;
   settingsClosing = false;
@@ -101,6 +106,12 @@ export class AppComponent implements OnInit, OnDestroy {
   autoOpenReceived = false;
   discoverable = true;
   networkOnline = true;
+  updateStatus: UpdateStatus = 'idle';
+  availableUpdate: AvailableAppUpdate | null = null;
+  updatePromptOpen = false;
+  updateDownloadedBytes = 0;
+  updateTotalBytes = 0;
+  updateError = '';
 
   fileSelectionOpen = false;
   sendingOpen = false;
@@ -129,7 +140,10 @@ export class AppComponent implements OnInit, OnDestroy {
   private sendRequestGeneration = 0;
   private settingsCloseTimer: ReturnType<typeof setTimeout> | null = null;
 
-  constructor(private readonly zone: NgZone) {}
+  constructor(
+    private readonly zone: NgZone,
+    private readonly appUpdates: AppUpdateService,
+  ) {}
 
   async ngOnInit() {
     if (!this.runningInTauri) {
@@ -160,6 +174,9 @@ export class AppComponent implements OnInit, OnDestroy {
         }
       });
       this.unlistenFunctions.push(unlistenDragDrop);
+
+      // A failed background check stays silent; users can always retry from Settings.
+      void this.checkForUpdates(false);
     } catch (error) {
       this.transferError = this.errorMessage(error);
     }
@@ -172,6 +189,10 @@ export class AppComponent implements OnInit, OnDestroy {
 
     for (const unlisten of this.unlistenFunctions) {
       unlisten();
+    }
+
+    if (this.updateStatus !== 'downloading' && this.updateStatus !== 'installing') {
+      void this.appUpdates.dispose();
     }
   }
 
@@ -199,6 +220,102 @@ export class AppComponent implements OnInit, OnDestroy {
 
   setTheme(theme: 'auto' | 'light' | 'dark') {
     this.selectedTheme = theme;
+  }
+
+  async checkForUpdates(manual = true) {
+    if (!this.runningInTauri || !this.desktopUpdatesSupported || this.updateStatus === 'checking' || this.updateStatus === 'downloading' || this.updateStatus === 'installing') {
+      return;
+    }
+
+    if (this.availableUpdate) {
+      this.updatePromptOpen = true;
+      return;
+    }
+
+    this.updateStatus = 'checking';
+    this.updateError = '';
+
+    try {
+      const update = await this.appUpdates.checkForUpdate();
+      if (!update) {
+        this.updateStatus = manual ? 'up-to-date' : 'idle';
+        return;
+      }
+
+      this.availableUpdate = update;
+      this.updateStatus = 'available';
+      this.updatePromptOpen = true;
+    } catch (error) {
+      this.updateError = this.errorMessage(error);
+      this.updateStatus = manual ? 'error' : 'idle';
+    }
+  }
+
+  postponeUpdate() {
+    if (this.updateStatus === 'downloading' || this.updateStatus === 'installing') {
+      return;
+    }
+    this.updatePromptOpen = false;
+  }
+
+  async installUpdate() {
+    if (!this.availableUpdate || this.updateStatus === 'downloading' || this.updateStatus === 'installing') {
+      return;
+    }
+
+    this.updateStatus = 'downloading';
+    this.updateDownloadedBytes = 0;
+    this.updateTotalBytes = 0;
+    this.updateError = '';
+
+    try {
+      await this.appUpdates.downloadAndInstall((event) => {
+        this.zone.run(() => {
+          if (event.event === 'Started') {
+            this.updateTotalBytes = event.data.contentLength ?? 0;
+          } else if (event.event === 'Progress') {
+            this.updateDownloadedBytes += event.data.chunkLength;
+          } else {
+            this.updateStatus = 'installing';
+          }
+        });
+      });
+    } catch (error) {
+      this.updateError = this.errorMessage(error);
+      this.updateStatus = 'available';
+    }
+  }
+
+  get updateSettingsText() {
+    switch (this.updateStatus) {
+      case 'checking':
+        return 'Checking for a new version…';
+      case 'available':
+        return `Version ${this.availableUpdate?.version} is available`;
+      case 'downloading':
+        return this.updateTotalBytes > 0
+          ? `Downloading ${Math.round(this.updateDownloadProgress)}%…`
+          : 'Downloading update…';
+      case 'installing':
+        return 'Installing update…';
+      case 'up-to-date':
+        return `FileDrop ${this.appVersion} is up to date`;
+      case 'error':
+        return 'Could not check. Please try again.';
+      default:
+        return 'Get the newest features and fixes';
+    }
+  }
+
+  get updateDownloadProgress() {
+    if (this.updateTotalBytes <= 0) {
+      return 0;
+    }
+    return Math.min(100, (this.updateDownloadedBytes / this.updateTotalBytes) * 100);
+  }
+
+  get desktopUpdatesSupported() {
+    return this.localPlatform === 'mac' || this.localPlatform === 'windows';
   }
 
   async toggleDiscoverability() {
