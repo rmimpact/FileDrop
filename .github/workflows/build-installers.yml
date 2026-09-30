@@ -103,6 +103,7 @@ jobs:
 
       - name: Build signed and notarized Mac installer and add it to the release
         if: runner.os == 'macOS'
+        id: build-macos
         uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -125,12 +126,25 @@ jobs:
           releaseDraft: ${{ github.event_name == 'workflow_dispatch' }}
           prerelease: false
           generateReleaseNotes: true
-          uploadUpdaterJson: true
-          releaseAssetNamePattern: FileDrop-macOS.[ext]
+          uploadUpdaterJson: false
+          retryAttempts: 3
           args: ${{ matrix.args }}
+
+      - name: Add permanent Mac download link
+        if: runner.os == 'macOS'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="$(node -p "require('./src-tauri/tauri.conf.json').version")"
+          INSTALLER="$(find src-tauri/target -path '*/bundle/dmg/*.dmg' -type f | head -n 1)"
+          ALIAS="$RUNNER_TEMP/FileDrop-macOS.dmg"
+          cp "$INSTALLER" "$ALIAS"
+          gh release upload "filedrop-v$VERSION" "$ALIAS" --clobber
 
       - name: Build Windows installer and add it to the release
         if: runner.os == 'Windows'
+        id: build-windows
         uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -150,7 +164,47 @@ jobs:
           releaseDraft: ${{ github.event_name == 'workflow_dispatch' }}
           prerelease: false
           generateReleaseNotes: true
-          uploadUpdaterJson: true
+          uploadUpdaterJson: false
           updaterJsonPreferNsis: true
-          releaseAssetNamePattern: FileDrop-Windows-x64-Setup.[ext]
+          retryAttempts: 3
           args: ${{ matrix.args }}
+
+      - name: Add permanent Windows download link
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $Version = node -p "require('./src-tauri/tauri.conf.json').version"
+          $Installer = Get-ChildItem -Path src-tauri/target -Recurse -Filter "*-setup.exe" | Select-Object -First 1
+          $Alias = Join-Path $env:RUNNER_TEMP "FileDrop-Windows-x64-Setup.exe"
+          Copy-Item $Installer.FullName $Alias
+          gh release upload "filedrop-v$Version" $Alias --clobber
+
+  publish-update-manifest:
+    name: Publish combined update manifest
+    needs: build-installers
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out FileDrop
+        uses: actions/checkout@v4
+
+      - name: Download updater signatures and release metadata
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="$(node -p "require('./src-tauri/tauri.conf.json').version")"
+          RELEASE_TAG="filedrop-v$VERSION"
+          mkdir -p updater-signatures
+          gh release download "$RELEASE_TAG" --pattern '*.sig' --dir updater-signatures
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" > release.json
+
+      - name: Create and publish complete latest.json
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="$(node -p "require('./src-tauri/tauri.conf.json').version")"
+          RELEASE_TAG="filedrop-v$VERSION"
+          node scripts/create-update-manifest.mjs "$VERSION" release.json updater-signatures latest.json
+          gh release upload "$RELEASE_TAG" latest.json --clobber

@@ -98,7 +98,7 @@ interface TransferFailed {
 export class AppComponent implements OnInit, OnDestroy {
   localDeviceName = 'This Device';
   localPlatform: DeviceType = 'other';
-  appVersion = '1.1.0';
+  appVersion = '1.1.1';
   downloadDirectory = '';
   settingsOpen = false;
   settingsClosing = false;
