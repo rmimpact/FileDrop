@@ -14,15 +14,16 @@ jobs:
     name: ${{ matrix.name }}
     strategy:
       fail-fast: false
-      # Each platform contributes to the same latest.json file. Serial builds avoid
-      # two jobs replacing that manifest at the same time.
+      # Serial builds avoid two jobs trying to create the same release at once.
       max-parallel: 1
       matrix:
         include:
           - name: macOS universal DMG
             platform: macos-latest
             rust_targets: aarch64-apple-darwin,x86_64-apple-darwin
-            args: --target universal-apple-darwin --bundles dmg
+            # The app bundle is required for Tauri's signed .app.tar.gz updater;
+            # the DMG remains the friendly installer for first-time downloads.
+            args: --target universal-apple-darwin --bundles app,dmg
           - name: Windows x64 setup executable
             platform: windows-latest
             rust_targets: x86_64-pc-windows-msvc
